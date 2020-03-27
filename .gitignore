@@ -1,0 +1,17 @@
+# Visual Studio Code settings files
+.vscode
+
+# Logs
+logs
+*.log
+*.err
+
+# Dependencies
+node_modules
+package-lock.json
+
+# Environment variables file
+*.env
+
+# Dist files
+dist/
