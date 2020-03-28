@@ -5,8 +5,9 @@
 	"main": "dist/index.js",
 	"repository": "https://github.com/brussell98/megane",
 	"author": "Brussell",
-	"license": "TODO",
+	"license": "MIT",
 	"scripts": {
+		"prepublish": "yarn build",
 		"build": "tsc"
 	},
 	"dependencies": {
@@ -16,7 +17,7 @@
 	},
 	"devDependencies": {
 		"@types/dotenv": "^8.2.0",
-		"@types/node": "^12.12.31",
+		"@types/node": "^12.12.32",
 		"@types/node-fetch": "^2.5.5",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",

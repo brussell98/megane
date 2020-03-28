@@ -2,7 +2,6 @@ import { ClusterWorkerIPC } from './ClusterWorkerIPC';
 import { ShardManager } from '../sharding/ShardManager';
 import { Client, ClientOptions, Guild, AnyChannel, User } from 'eris';
 import { IPCEvents } from '../util/constants';
-import { sleep } from '../util/util';
 
 export abstract class BaseClusterWorker {
 	public readonly client: Client;

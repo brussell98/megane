@@ -152,6 +152,7 @@ export class ShardManager extends EventEmitter {
 		return await eval(script);
 	}
 
+	// TODO: Declare an interface because this doesn't work
 	public on(event: SharderEvents.SPAWN | SharderEvents.READY, listener: (cluster: Cluster) => void): this;
 	public on(event: SharderEvents.SHARD_CONNECTED | SharderEvents.SHARD_READY | SharderEvents.SHARD_RESUMED,
 		listener: (clusterId: number, shardId: number) => void): this;

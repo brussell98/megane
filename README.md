@@ -108,6 +108,7 @@ Events:
 |shardDisconnect|clusterId, shardId, error|Emitted when a shard disconnects|
 |debug|message|Debug messages|
 |error|error, clusterId?, shardId?|Emitted when there is an error|
+
 *The easiest way to reference event names is to use the SharderEvents enum*
 
 Properties:
