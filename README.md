@@ -23,6 +23,8 @@ Features to be added after 1.0:
 
 ## Using
 
+NPM package name: `@brussell98/megane`
+
 *You can see working examples by browsing the `test` folder*
 
 ### Basic Overview
@@ -178,3 +180,7 @@ Methods:
 	- `query`: An id, name, or partial name
 - `fetchChannel(id: string, clusterId?: number)`: Fetches a channel from other clusters
 - `fetchGuild(id: string, clusterId?: number)`: Fetches a guild from other clusters
+
+## Naming
+
+This was created to be used for [Mirai Bot for Discord](https://mirai.brussell.me). The bot is named after the anime character [Mirai Kuriyama (栗山 未来)](https://myanimelist.net/character/81751/Mirai_Kuriyama), who notably wears red glasses [[Megane (めがね)](https://jisho.org/word/眼鏡)].

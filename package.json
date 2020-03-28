@@ -7,7 +7,7 @@
 	"author": "Brussell",
 	"license": "MIT",
 	"scripts": {
-		"prepublish": "yarn build",
+		"prepublishOnly": "yarn build",
 		"build": "tsc"
 	},
 	"dependencies": {
@@ -24,5 +24,12 @@
 		"dotenv": "^8.2.0",
 		"eslint": "^6.8.0",
 		"typescript": "^3.8.3"
-	}
+	},
+	"keywords": [
+		"discord",
+		"bot",
+		"cluster",
+		"sharding",
+		"automatic"
+	]
 }
