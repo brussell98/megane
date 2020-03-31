@@ -9,14 +9,23 @@ import { ClientOptions } from 'eris';
 import fetch from 'node-fetch';
 
 export interface SharderOptions {
+	/** Path to the js file for clusters to run */
 	path: string;
+	/** Discord bot token */
 	token: string;
+	/** Number of guilds each shard should have (at initial sharding) (Only used if shardCount is set to 'auto') */
 	guildsPerShard?: number;
+	/** Number of shards to create */
 	shardCount?: number | 'auto';
+	/** Maximum number of clusters to create */
 	clusterCount?: number;
+	/** Options to pass to the Eris client constructor */
 	clientOptions?: ClientOptions;
+	/** How long to wait for a cluster to connect before throwing an error, multiplied by the number of thousands of guilds */
 	timeout?: number;
+	/** An array of arguments to pass to the cluster node processes */
 	nodeArgs?: string[];
+	/** The socket/port for IPC to run on */
 	ipcSocket?: string | number;
 }
 
@@ -67,6 +76,11 @@ export class ShardManager extends EventEmitter {
 			this.ipc = new MasterIPC(this);
 	}
 
+	/**
+	 * On master: Creates clusters and forks the process
+	 *
+	 * On workers: Loads the provided file implementing a BaseClusterWorker and calls init()
+	 */
 	public async spawn() {
 		if (isMaster) {
 			if (this.shardCount === 'auto') {
@@ -152,27 +166,6 @@ export class ShardManager extends EventEmitter {
 		return await eval(script);
 	}
 
-	// TODO: Declare an interface because this doesn't work
-	public on(event: SharderEvents.SPAWN | SharderEvents.READY, listener: (cluster: Cluster) => void): this;
-	public on(event: SharderEvents.SHARD_CONNECTED | SharderEvents.SHARD_READY | SharderEvents.SHARD_RESUMED,
-		listener: (clusterId: number, shardId: number) => void): this;
-	public on(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
-	public on(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
-	public on(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
-	public on(event: any, listener: (...args: any[]) => void): this {
-		return super.on(event, listener);
-	}
-
-	public once(event: SharderEvents.SPAWN | SharderEvents.READY, listener: (cluster: Cluster) => void): this;
-	public once(event: SharderEvents.SHARD_CONNECTED | SharderEvents.SHARD_READY | SharderEvents.SHARD_RESUMED,
-		listener: (clusterId: number, shardId: number) => void): this;
-	public once(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
-	public once(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
-	public once(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
-	public once(event: any, listener: (...args: any[]) => void): this {
-		return super.once(event, listener);
-	}
-
 	private async getBotGateway(): Promise<SessionObject> {
 		if (!this.token)
 			throw new Error('No token was provided!');
@@ -211,4 +204,78 @@ export class ShardManager extends EventEmitter {
 	private debug(message: string) {
 		this.emit(SharderEvents.DEBUG, message);
 	}
+}
+
+export interface ShardManager {
+	/** Emitted when a cluster spawns */
+	on(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a cluster becomes ready */
+	on(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a shard connects (before ready) */
+	on(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted the first time a shard becomes ready */
+	on(event: SharderEvents.SHARD_READY, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard resumes */
+	on(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard disconnects */
+	on(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emits debug messages */
+	on(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
+	/** Emitted when there is an error */
+	on(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
+	on(event: any, listener: (...args: any[]) => void): this;
+
+	/** Emitted when a cluster spawns */
+	once(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a cluster becomes ready */
+	once(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a shard connects (before ready) */
+	once(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted the first time a shard becomes ready */
+	once(event: SharderEvents.SHARD_READY, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard resumes */
+	once(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard disconnects */
+	once(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emits debug messages */
+	once(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
+	/** Emitted when there is an error */
+	once(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
+	once(event: any, listener: (...args: any[]) => void): this;
+
+	/** Emitted when a cluster spawns */
+	off(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a cluster becomes ready */
+	off(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a shard connects (before ready) */
+	off(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted the first time a shard becomes ready */
+	off(event: SharderEvents.SHARD_READY, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard resumes */
+	off(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
+	/** Emitted when a shard disconnects */
+	off(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emits debug messages */
+	off(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
+	/** Emitted when there is an error */
+	off(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
+	off(event: any, listener: (...args: any[]) => void): this;
+
+	/** Emitted when a cluster spawns */
+	emit(event: SharderEvents.SPAWN, cluster: Cluster): boolean;
+	/** Emitted when a cluster becomes ready */
+	emit(event: SharderEvents.READY, cluster: Cluster): boolean;
+	/** Emitted when a shard connects (before ready) */
+	emit(event: SharderEvents.SHARD_CONNECTED, clusterId: number, shardId: number): boolean;
+	/** Emitted the first time a shard becomes ready */
+	emit(event: SharderEvents.SHARD_READY, clusterId: number, shardId: number): boolean;
+	/** Emitted when a shard resumes */
+	emit(event: SharderEvents.SHARD_RESUMED, clusterId: number, shardId: number): boolean;
+	/** Emitted when a shard disconnects */
+	emit(event: SharderEvents.SHARD_DISCONNECT, clusterId: number, shardId: number, error: Error): boolean;
+	/** Emits debug messages */
+	emit(event: SharderEvents.DEBUG, message: string): boolean;
+	/** Emitted when there is an error */
+	emit(event: SharderEvents.ERROR, error: Error, clusterId: number | undefined, shardId: number | undefined): boolean;
+	emit(event: any, ...args: any[]): boolean;
 }
