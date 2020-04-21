@@ -5,44 +5,39 @@ import { SharderEvents } from '../util/constants';
 import * as Util from '../util/util';
 import { SendOptions } from 'veza';
 
-interface ShardOptions {
-	first: number;
-	last: number;
-	total: number;
+export interface ServiceOptions {
+	name: string;
+	/** How many milliseconds to wait for the service worker to be ready */
+	timeout?: number;
 }
 
-export interface ClusterOptions {
-	id: number;
-	shards: ShardOptions;
-}
-
-export class Cluster extends EventEmitter {
-	/** Indicates if the worker's client is ready */
+export class Service extends EventEmitter {
+	/** Indicates if the worker is ready */
 	public ready = false;
-	public id: number;
-	public shards: ShardOptions;
+	public name: string;
 	public worker?: Worker;
+	public timeout: number;
 
 	private readonly exitListenerFunction: (...args: any[]) => void;
 
-	public constructor(public manager: ShardManager, options: ClusterOptions) {
+	public constructor(public manager: ShardManager, public path: string, options: ServiceOptions) {
 		super();
 
-		this.id = options.id;
-		this.shards = options.shards;
+		this.name = options.name;
+		this.timeout = options.timeout || 30e3;
 
 		this.exitListenerFunction = this.exitListener.bind(this);
 	}
 
 	public send(data: any, options: SendOptions = { }) {
-		return this.manager.ipc!.sendTo('cluster:' + this.id, data, options);
+		return this.manager.ipc!.sendTo('service:' + this.name, data, options);
 	}
 
 	public kill() {
 		this.ready = false;
 
 		if (this.worker) {
-			this.debug(`Killing cluster ${this.id}`);
+			this.debug(`Killing service ${this.name}`);
 
 			this.worker.removeListener('exit', this.exitListenerFunction);
 			this.worker.process.disconnect();
@@ -59,19 +54,17 @@ export class Cluster extends EventEmitter {
 
 	public async spawn() {
 		if (this.worker && !this.worker.isDead)
-			throw new Error('This cluster already has a spawned worker');
+			throw new Error('This service already has a spawned worker');
 
 		this.worker = fork({
-			FIRST_SHARD: this.shards.first.toString(),
-			LAST_SHARD: this.shards.last.toString(),
-			SHARD_COUNT: this.shards.total.toString(),
-			CLUSTER_ID: this.id.toString()
+			SERVICE_NAME: this.name,
+			SERVICE_PATH: this.path
 		});
 
 		this.worker.once('exit', this.exitListenerFunction);
 
 		this.debug(`Worker spawned with id ${this.worker.id}`);
-		this.manager.emit(SharderEvents.CLUSTER_SPAWN, this);
+		this.manager.emit(SharderEvents.SERVICE_SPAWN, this);
 
 		await this.waitForReady();
 	}
@@ -83,8 +76,7 @@ export class Cluster extends EventEmitter {
 				return resolve();
 			});
 
-			setTimeout(() => reject(new Error(`Cluster ${this.id} took too long to get ready`)),
-				this.manager.timeout * this.shards.total * (this.manager.guildsPerShard / 1000));
+			setTimeout(() => reject(new Error(`Service ${this.name} took too long to get ready`)), this.timeout);
 		});
 	}
 
@@ -98,6 +90,6 @@ export class Cluster extends EventEmitter {
 	}
 
 	private debug(message: string) {
-		this.manager.emit(SharderEvents.DEBUG, '[Cluster] ' + message);
+		this.manager.emit(SharderEvents.DEBUG, '[Service] ' + message);
 	}
 }

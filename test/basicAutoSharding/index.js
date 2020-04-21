@@ -12,11 +12,13 @@ sharder.spawn();
 
 sharder.on('error', error => console.error(error));
 sharder.on('debug', message => console.log(message));
-sharder.on('ready', async cluster => {
+sharder.on('clusterReady', async cluster => {
 	console.log(`Cluster ${cluster.id} ready`);
 
 	runTests();
 });
+
+// TODO: Service tests (command from cluster and master, getting ready, running eval)
 
 let once = false;
 async function runTests() {

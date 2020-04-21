@@ -3,6 +3,8 @@ import { cpus } from 'os';
 import { isMaster, setupMaster } from 'cluster';
 import { Cluster } from '../clusters/Cluster';
 import { BaseClusterWorker } from '../clusters/BaseClusterWorker';
+import { Service, ServiceOptions } from '../services/Service';
+import { BaseServiceWorker } from '../services/BaseServiceWorker';
 import { MasterIPC } from './MasterIPC';
 import { SharderEvents } from '../util/constants';
 import { ClientOptions } from 'eris';
@@ -46,14 +48,20 @@ interface ClusterShardInfo {
 }
 
 export class ShardManager extends EventEmitter {
-	public clusters = new Map<number, Cluster>();
+	/** A map of clusters by their id */
+	public clusters?: Map<number, Cluster>;
+	/** A map of services by their name */
+	public services?: Map<string, Service>;
+	/** A generic store of data used by all workers */
 	public store = new Map<string, any>();
+	/** Path to the js file for clusters to run */
 	public path: string;
 	public token: string;
 	public guildsPerShard: number;
 	public shardCount: number | 'auto';
 	public clusterCount: number;
 	public clientOptions: ClientOptions;
+	/** Time to wait for clusters to start */
 	public timeout: number;
 	public nodeArgs?: string[];
 	public ipcSocket: string | number;
@@ -72,14 +80,17 @@ export class ShardManager extends EventEmitter {
 		this.nodeArgs = options.nodeArgs;
 		this.ipcSocket = options.ipcSocket || 8191;
 
-		if (isMaster)
+		if (isMaster) {
+			this.clusters = new Map<number, Cluster>();
+			this.services = new Map<string, Service>();
 			this.ipc = new MasterIPC(this);
+		}
 	}
 
 	/**
 	 * On master: Creates clusters and forks the process
 	 *
-	 * On workers: Loads the provided file implementing a BaseClusterWorker and calls init()
+	 * On workers: Loads the provided file implementing a worker and calls init()
 	 */
 	public async spawn() {
 		if (isMaster) {
@@ -106,7 +117,7 @@ export class ShardManager extends EventEmitter {
 				this.debug(`Creating cluster ${i} with ${shardInfo[i].total} shards (${shardInfo[i].first}-${shardInfo[i].last})`);
 				const cluster = new Cluster(this, { id: i, shards: shardInfo[i] });
 
-				this.clusters.set(i, cluster);
+				this.clusters!.set(i, cluster);
 
 				try {
 					await cluster.spawn();
@@ -119,23 +130,39 @@ export class ShardManager extends EventEmitter {
 			if (failed.length)
 				await this.retryFailed(failed);
 		} else {
-			// When a cluster is forked, load the worker module
-			const ClusterWorkerRequire = await import(this.path);
-			const ClusterWorker = ClusterWorkerRequire.default ? ClusterWorkerRequire.default : ClusterWorkerRequire;
-			const worker = new ClusterWorker(this) as BaseClusterWorker;
+			// When the process is forked, load the worker module
+			let worker;
+			if (process.env.SERVICE_NAME) {
+				const WorkerRequire = await import(String(process.env.SERVICE_PATH));
+				const Worker = WorkerRequire.default ? WorkerRequire.default : WorkerRequire;
+				worker = new Worker(this) as BaseServiceWorker;
+			} else {
+				const WorkerRequire = await import(this.path);
+				const Worker = WorkerRequire.default ? WorkerRequire.default : WorkerRequire;
+				worker = new Worker(this) as BaseClusterWorker;
+			}
+
 			return worker.init();
 		}
 	}
 
+	/** Restarts all clusters */
 	public async restartAll() {
+		if (!isMaster)
+			throw new Error('This can only be called on the master process');
+
 		this.debug('Restarting all clusters');
 
-		for (const cluster of this.clusters.values())
+		for (const cluster of this.clusters!.values())
 			await cluster.respawn();
 	}
 
+	/** Restarts a specific cluster */
 	public async restart(clusterId: number) {
-		const cluster = this.clusters.get(clusterId);
+		if (!isMaster)
+			throw new Error('This can only be called on the master process');
+
+		const cluster = this.clusters!.get(clusterId);
 		if (!cluster)
 			throw new Error('No cluster with that id found');
 
@@ -145,6 +172,9 @@ export class ShardManager extends EventEmitter {
 	}
 
 	private async retryFailed(clusters: Cluster[]): Promise<void> {
+		if (!isMaster)
+			throw new Error('This can only be called on the master process');
+
 		this.debug(`Restarting ${clusters.length} failed clusters`);
 		const failed: Cluster[] = [];
 
@@ -161,12 +191,32 @@ export class ShardManager extends EventEmitter {
 			return this.retryFailed(failed);
 	}
 
+	/** Register and spawn a service */
+	public async registerService(path: string, options: ServiceOptions) {
+		if (!isMaster)
+			throw new Error('This can only be called on the master process');
+
+		if (!path || !options || !options.name || this.services!.has(options.name))
+			throw new Error('You must provide a path to the worker and a unique name when registering a service');
+
+		const service = new Service(this, path, options);
+
+		this.services!.set(options.name, service);
+
+		try {
+			await service.spawn();
+		} catch {
+			throw new Error('Service worker failed to start');
+		}
+	}
+
 	public async eval(script: string) {
 		// eslint-disable-next-line no-eval
 		return await eval(script);
 	}
 
-	private async getBotGateway(): Promise<SessionObject> {
+	/** Get the bot gateway response from Discord */
+	public async getBotGateway(): Promise<SessionObject> {
 		if (!this.token)
 			throw new Error('No token was provided!');
 
@@ -207,10 +257,14 @@ export class ShardManager extends EventEmitter {
 }
 
 export interface ShardManager {
+	/** Emitted when a service spawns */
+	on(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
+	/** Emitted when a service becomes ready */
+	on(event: SharderEvents.SERVICE_READY, listener: (service: Service) => void): this;
 	/** Emitted when a cluster spawns */
-	on(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	on(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
-	on(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	on(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a shard connects (before ready) */
 	on(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -225,10 +279,14 @@ export interface ShardManager {
 	on(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
 	on(event: any, listener: (...args: any[]) => void): this;
 
+	/** Emitted when a service spawns */
+	once(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
+	/** Emitted when a service becomes ready */
+	once(event: SharderEvents.SERVICE_READY, listener: (service: Service) => void): this;
 	/** Emitted when a cluster spawns */
-	once(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	once(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
-	once(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	once(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a shard connects (before ready) */
 	once(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -243,10 +301,14 @@ export interface ShardManager {
 	once(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
 	once(event: any, listener: (...args: any[]) => void): this;
 
+	/** Emitted when a service spawns */
+	off(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
+	/** Emitted when a service becomes ready */
+	off(event: SharderEvents.SERVICE_READY, listener: (service: Service) => void): this;
 	/** Emitted when a cluster spawns */
-	off(event: SharderEvents.SPAWN, listener: (cluster: Cluster) => void): this;
+	off(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
-	off(event: SharderEvents.READY, listener: (cluster: Cluster) => void): this;
+	off(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a shard connects (before ready) */
 	off(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -261,10 +323,14 @@ export interface ShardManager {
 	off(event: SharderEvents.ERROR, listener: (error: Error, clusterId: number | undefined, shardId: number | undefined) => void): this;
 	off(event: any, listener: (...args: any[]) => void): this;
 
+	/** Emitted when a service spawns */
+	emit(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
+	/** Emitted when a service becomes ready */
+	emit(event: SharderEvents.SERVICE_READY, listener: (service: Service) => void): this;
 	/** Emitted when a cluster spawns */
-	emit(event: SharderEvents.SPAWN, cluster: Cluster): boolean;
+	emit(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
-	emit(event: SharderEvents.READY, cluster: Cluster): boolean;
+	emit(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a shard connects (before ready) */
 	emit(event: SharderEvents.SHARD_CONNECTED, clusterId: number, shardId: number): boolean;
 	/** Emitted the first time a shard becomes ready */

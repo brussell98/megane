@@ -1,7 +1,6 @@
-const assert = require('assert').strict;
 const { BaseClusterWorker, IPCEvents, Util } = require('../../dist');
 
-const commandList = ['test', 'avatar', 'set', 'get'];
+const commandList = ['test', 'avatar', 'set', 'get', 'json'];
 
 module.exports = class Bot extends BaseClusterWorker {
 	async launch() {
@@ -51,5 +50,13 @@ module.exports = class Bot extends BaseClusterWorker {
 			return message.channel.createMessage('Key not found');
 
 		return message.channel.createMessage(`Value for key "${args}": ${d.value}`);
+	}
+
+	async json(message, args) {
+		if (!/^\d+$/.test(args))
+			return message.channel.createMessage('Post id required');
+
+		const data = await this.ipc.sendCommand('json-api', { op: 'GET_POST', postId: args }, { receptive: true });
+		return message.channel.createMessage(JSON.stringify(data, null, '\t'));
 	}
 }

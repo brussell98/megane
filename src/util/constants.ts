@@ -1,5 +1,6 @@
 export enum IPCEvents {
 	EVAL = 'eval',
+	SERVICE_EVAL = 'serviceEval',
 	READY = 'ready',
 	SHARD_READY = 'shardReady',
 	SHARD_CONNECTED = 'shardConnected',
@@ -11,12 +12,15 @@ export enum IPCEvents {
 	SET = 'set',
 	FETCH_USER = 'fetchUser',
 	FETCH_GUILD = 'fetchGuild',
-	FETCH_CHANNEL = 'fetchChannel'
+	FETCH_CHANNEL = 'fetchChannel',
+	SERVICE_COMMAND = 'serviceCommand'
 }
 
 export enum SharderEvents {
-	SPAWN = 'spawn',
-	READY = 'ready',
+	SERVICE_SPAWN = 'serviceSpawn',
+	SERVICE_READY = 'serviceReady',
+	CLUSTER_SPAWN = 'clusterSpawn',
+	CLUSTER_READY = 'clusterReady',
 	SHARD_CONNECTED = 'shardConnected',
 	SHARD_READY = 'shardReady',
 	SHARD_RESUMED = 'shardResumed',

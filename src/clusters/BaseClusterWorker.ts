@@ -4,8 +4,11 @@ import { Client, ClientOptions, Guild, AnyChannel, User } from 'eris';
 import { IPCEvents } from '../util/constants';
 
 export abstract class BaseClusterWorker {
+	/** The worker's Eris client */
 	public readonly client: Client;
+	/** The worker's cluster id */
 	public readonly id: number;
+	/** The worker's IPC client */
 	public readonly ipc: ClusterWorkerIPC;
 
 	public constructor(public manager: ShardManager) {
@@ -39,6 +42,11 @@ export abstract class BaseClusterWorker {
 		await this.launch();
 	}
 
+	/**
+	 * Is called after the worker is initialized with an IPC client. This method must be implemented.
+	 * This is where you should usually connect the Eris client.
+	 * @abstract
+	 */
 	protected abstract launch(): Promise<void> | void;
 
 	public async eval(script: string) {
