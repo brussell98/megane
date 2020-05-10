@@ -42,8 +42,11 @@ interface SessionObject {
 }
 
 interface ClusterShardInfo {
+	/** First 0-indexed shard for this cluster */
 	first: number;
+	/** Last 0-indexed shard for this cluster */
 	last: number;
+	/** Total number of shards across all clusters */
 	total: number;
 }
 
@@ -114,7 +117,7 @@ export class ShardManager extends EventEmitter {
 			const failed: Cluster[] = [];
 
 			for (let i = 0; i < this.clusterCount; i++) {
-				this.debug(`Creating cluster ${i} with ${shardInfo[i].total} shards (${shardInfo[i].first}-${shardInfo[i].last})`);
+				this.debug(`Creating cluster ${i} with ${shardInfo[i].last - shardInfo[i].first + 1} shards (${shardInfo[i].first}-${shardInfo[i].last})`);
 				const cluster = new Cluster(this, { id: i, shards: shardInfo[i] });
 
 				this.clusters!.set(i, cluster);
@@ -234,7 +237,7 @@ export class ShardManager extends EventEmitter {
 	}
 
 	private clusterShards(): ClusterShardInfo[] {
-		const clusters = [];
+		const clusters: ClusterShardInfo[] = [];
 		const shardsPerCluster = Math.floor(<number>this.shardCount / this.clusterCount);
 		const leftovers = <number>this.shardCount % this.clusterCount;
 
@@ -243,7 +246,7 @@ export class ShardManager extends EventEmitter {
 			clusters.push({
 				first: current,
 				last: current + shardsPerCluster - 1 + (leftovers > i ? 1 : 0),
-				total: shardsPerCluster + (leftovers > i ? 1 : 0)
+				total: <number>this.shardCount
 			});
 			current += shardsPerCluster + (leftovers > i ? 1 : 0);
 		}
@@ -324,13 +327,13 @@ export interface ShardManager {
 	off(event: any, listener: (...args: any[]) => void): this;
 
 	/** Emitted when a service spawns */
-	emit(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
+	emit(event: SharderEvents.SERVICE_SPAWN, service: Service): this;
 	/** Emitted when a service becomes ready */
-	emit(event: SharderEvents.SERVICE_READY, listener: (service: Service) => void): this;
+	emit(event: SharderEvents.SERVICE_READY, service: Service): this;
 	/** Emitted when a cluster spawns */
-	emit(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
+	emit(event: SharderEvents.CLUSTER_SPAWN, cluster: Cluster): this;
 	/** Emitted when a cluster becomes ready */
-	emit(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
+	emit(event: SharderEvents.CLUSTER_READY, cluster: Cluster): this;
 	/** Emitted when a shard connects (before ready) */
 	emit(event: SharderEvents.SHARD_CONNECTED, clusterId: number, shardId: number): boolean;
 	/** Emitted the first time a shard becomes ready */

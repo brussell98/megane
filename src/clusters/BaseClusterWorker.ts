@@ -15,7 +15,7 @@ export abstract class BaseClusterWorker {
 		const clientConfig: ClientOptions = Object.assign({ }, manager.clientOptions, {
 			firstShardID: Number(process.env.FIRST_SHARD),
 			lastShardID: Number(process.env.LAST_SHARD),
-			maxShards: Number(process.env.SHARD_COUNT)
+			maxShards: Number(process.env.TOTAL_SHARDS)
 		});
 
 		this.client = new Client(manager.token, clientConfig);

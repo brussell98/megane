@@ -64,7 +64,7 @@ export class Cluster extends EventEmitter {
 		this.worker = fork({
 			FIRST_SHARD: this.shards.first.toString(),
 			LAST_SHARD: this.shards.last.toString(),
-			SHARD_COUNT: this.shards.total.toString(),
+			TOTAL_SHARDS: this.shards.total.toString(),
 			CLUSTER_ID: this.id.toString()
 		});
 
