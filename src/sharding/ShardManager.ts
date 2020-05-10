@@ -60,9 +60,13 @@ export class ShardManager extends EventEmitter {
 	/** Path to the js file for clusters to run */
 	public path: string;
 	public token: string;
+	/** The intended number of guilds that each shard should have. This is only used when shardCount is set to auto. Do not set this to a low number or you may greatly overshoot your shard count and end up with hundreds of empty shards */
 	public guildsPerShard: number;
+	/** Creates a specific number of shards instead of using auto-sharding */
 	public shardCount: number | 'auto';
+	/** The number of clusters to create. By default this is the number of CPUs */
 	public clusterCount: number;
+	/** Eris client constructor options */
 	public clientOptions: ClientOptions;
 	/** Time to wait for clusters to start */
 	public timeout: number;

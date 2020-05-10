@@ -7,7 +7,7 @@ export enum IPCEvents {
 	SHARD_RESUMED = 'shardResumed',
 	SHARD_DISCONNECTED = 'shardDisconnected',
 	ERROR = 'error',
-	RESTART = 'restart',
+	SHUTDOWN = 'shutdown',
 	GET = 'get',
 	SET = 'set',
 	FETCH_USER = 'fetchUser',

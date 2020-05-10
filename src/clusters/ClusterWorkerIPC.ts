@@ -135,6 +135,13 @@ export class ClusterWorkerIPC extends EventEmitter {
 		}
 	}
 
+	private async ['_' + IPCEvents.SHUTDOWN]() {
+		await this.worker.shutdown();
+		await this.disconnect();
+
+		process.exit(0);
+	}
+
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
 		const result = this.worker.getUser(data.query)?.toJSON() || null;
 		return message.reply({ success: true, d: { found: result !== null, result } });

@@ -30,6 +30,9 @@ export abstract class BaseServiceWorker {
 		return this.ipc.server.send({ op: IPCEvents.READY, d: { name: this.name } });
 	}
 
+	/** Can be implemented to allow for graceful shutdown of the service */
+	public abstract shutdown(): Promise<void> | void;
+
 	/**
 	 * Is called after the worker is initialized with an IPC client. This method must be implemented.
 	 * @abstract

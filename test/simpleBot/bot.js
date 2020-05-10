@@ -18,6 +18,13 @@ module.exports = class Bot extends BaseClusterWorker {
 			this[command](message, args);
 	}
 
+	async shutdown() {
+		console.log('[Cluster] Shutting down...');
+		await super.shutdown();
+		await Util.sleep(2000);
+		console.log('[Cluster] Ready to shut down');
+	}
+
 	test(message) {
 		return message.channel.createMessage(`I am listening on cluster ${this.id}`);
 	}

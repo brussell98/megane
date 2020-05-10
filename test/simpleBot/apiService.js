@@ -15,6 +15,12 @@ module.exports = class JsonAPI extends BaseServiceWorker {
 			return this.asError(new Error('Unknown command'));
 	}
 
+	async shutdown() {
+		console.log('[Service] Shutting down...');
+		await Util.sleep(2000);
+		console.log('[Service] Ready to shut down');
+	}
+
 	async getInitialData() {
 		const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
 

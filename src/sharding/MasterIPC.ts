@@ -159,17 +159,34 @@ export class MasterIPC {
 		this.manager.emit(SharderEvents.ERROR, data.error, data.id, data.shardId);
 	}
 
-	private async ['_' + IPCEvents.RESTART](message: NodeMessage) {
+	private async ['_' + IPCEvents.SHUTDOWN](message: NodeMessage, data: any) {
 		try {
-			const clusterId = getIdFromSocketName(message.client.name);
-			if (clusterId === null || !this.manager.clusters!.has(clusterId))
-				return message.reply({ success: false, d: { name: 'Error', message: 'Unable to restart sender because it is not a known cluster' } });
+			const clientId = getIdFromSocketName(message.client.name);
+			if (typeof clientId !== 'string') {
+				if (clientId === null || !this.manager.clusters!.has(clientId))
+					return message.reply({ success: false, d: { name: 'Error', message: 'Unable to shut down sender because it is not a known cluster' } });
 
-			const cluster = this.manager.clusters!.get(clusterId)!;
-			await cluster.respawn();
-			return message.reply({ success: true, d: { workerId: cluster.worker!.id } });
+				const cluster = this.manager.clusters!.get(clientId)!;
+				if (data.restart === true)
+					await cluster.respawn();
+				else
+					await cluster.kill();
+
+				return message.receptive && message.reply({ success: true, d: { workerId: cluster.worker?.id } });
+			}
+
+			if (!this.manager.services!.has(clientId))
+				return message.reply({ success: false, d: { name: 'Error', message: 'Unable to shut down sender because it is not a known cluster' } });
+
+			const service = this.manager.services!.get(clientId)!;
+			if (data.restart === true)
+				await service.respawn();
+			else
+				await service.kill();
+
+			return message.receptive && message.reply({ success: true, d: { workerId: service.worker?.id } });
 		} catch (error) {
-			return message.reply({ success: false, d: { name: error.name, message: error.message, stack: error.stack } });
+			return message.receptive && message.reply({ success: false, d: { name: error.name, message: error.message, stack: error.stack } });
 		}
 	}
 

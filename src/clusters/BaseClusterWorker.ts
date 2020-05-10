@@ -21,12 +21,6 @@ export abstract class BaseClusterWorker {
 		this.client = new Client(manager.token, clientConfig);
 		this.id = Number(process.env.CLUSTER_ID);
 		this.ipc = new ClusterWorkerIPC(this, this.manager.ipcSocket);
-
-		process.on('exit', () => {
-			this.ipc.disconnect();
-			this.client.disconnect({ reconnect: false });
-			process.exit(0);
-		});
 	}
 
 	public async init() {
@@ -40,6 +34,15 @@ export abstract class BaseClusterWorker {
 		this.client.on('error', (error, shardId) => this.ipc.send({ op: IPCEvents.ERROR, d: { id: this.id, shardId, error } }));
 
 		await this.launch();
+	}
+
+	/**
+	 * Called for graceful shutdown of the worker. Disconnects the Eris client.
+	 *
+	 * You must call this method if you overwrite it using `super.shutdown()`.
+	 */
+	public shutdown(): Promise<void> | void {
+		this.client.disconnect({ reconnect: false });
 	}
 
 	/**

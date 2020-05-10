@@ -10,9 +10,12 @@ export function makeError(data: any) {
 	return error;
 }
 
-export function getIdFromSocketName(name: string | null): number | null {
+export function getIdFromSocketName(name: string | null): string | number | null {
 	if (!name)
 		return null;
+
+	if (name.startsWith('megane:service:'))
+		return name.substr(15);
 
 	const nameRegex = /\d+$/.exec(name);
 	if (!nameRegex)

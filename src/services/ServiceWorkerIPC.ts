@@ -92,6 +92,15 @@ export class ServiceWorkerIPC extends EventEmitter {
 		}
 	}
 
+	private async ['_' + IPCEvents.SHUTDOWN]() {
+		if (this.worker.shutdown)
+			await this.worker.shutdown();
+
+		await this.disconnect();
+
+		process.exit(0);
+	}
+
 	private async ['_' + IPCEvents.SERVICE_COMMAND](message: NodeMessage, data: string) {
 		try {
 			if (!message.receptive)

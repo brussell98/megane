@@ -26,6 +26,9 @@ if (isMaster) {
 	sharder.on('serviceReady', service => console.log(`Service ${service.name} ready`));
 
 	sharder.registerService(__dirname + '/apiService.js', { name: 'json-api' });
+
+	setInterval(() => sharder.restartAll(), 30e3);
+	setInterval(() => sharder.services.get('json-api').respawn(), 45e3);
 }
 
 sharder.spawn();
