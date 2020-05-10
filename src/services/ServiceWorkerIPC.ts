@@ -1,4 +1,4 @@
-import { IPCResult, IPCError } from '..';
+import { IPCEvent, IPCResult, IPCError } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseServiceWorker } from './BaseServiceWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
@@ -32,7 +32,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return this.clientSocket!;
 	}
 
-	public send(data: any, options: SendOptions = {}) {
+	public send(data: IPCEvent, options: SendOptions = {}) {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
@@ -111,5 +111,17 @@ export class ServiceWorkerIPC extends EventEmitter {
 		} catch (error) {
 			return message.reply({ success: false, d: { name: error.name, message: error.message, stack: error.stack } });
 		}
+	}
+
+	private ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+		return message.reply({
+			success: true, d: {
+				source: this.worker.name,
+				stats: {
+					memory: process.memoryUsage(),
+					cpu: process.cpuUsage()
+				}
+			}
+		});
 	}
 }

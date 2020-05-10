@@ -12,21 +12,13 @@ Based on [Kurasuta](https://github.com/DevYukine/Kurasuta).
 - Run eval over IPC
 - Restart individual clusters instead of the whole bot at once
 - Create worker processes to interact with APIs or do other expensive or central tasks
-
-Features to be added before 1.0:
-
-- Rolling restart helper
-- Automatic statistic collection (guilds, users, memory, cpu)
-- Improved IPC functions that are easier to use (partially complete)
+- Automatic collection of statistics
 
 Features to be added after 1.0:
 
+- Rolling restart helper
 - Re-sharding
-
-Current issues that need fixing:
-
-- Hacky graceful shutdown of workers needs to be fixed so workers can execute code to ensure a graceful shutdown
-- See if there's a better way to respawn workers than to wait for an arbitrary time and hope it's shut down
+- Improve IPC usability (need suggestions)
 
 ## Using
 

@@ -1,4 +1,4 @@
-import { IPCResult, IPCError, IPCEvalResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseClusterWorker } from './BaseClusterWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
@@ -32,7 +32,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return this.clientSocket!;
 	}
 
-	public send(data: any, options: SendOptions = { }) {
+	public send(data: IPCEvent, options: SendOptions = { }) {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
@@ -155,5 +155,20 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private ['_' + IPCEvents.FETCH_GUILD](message: NodeMessage, data: any) {
 		const result = this.worker.getGuild(data.query)?.toJSON() || null;
 		return message.reply({ success: true, d: { found: result !== null, result } });
+	}
+
+	private ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+		return message.reply({ success: true, d: {
+			source: this.worker.id,
+			stats: {
+				memory: process.memoryUsage(),
+				cpu: process.cpuUsage(),
+				discord: {
+					guilds: this.worker.client.guilds.size,
+					latencies: this.worker.client.shards.map(shard => shard.latency),
+					uptime: this.worker.client.uptime
+				}
+			}
+		} });
 	}
 }

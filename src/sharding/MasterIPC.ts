@@ -1,4 +1,4 @@
-import { IPCResult, IPCError, IPCEvalResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults } from '..';
 import { IPCEvents, SharderEvents } from '../util/constants';
 import { ShardManager } from './ShardManager';
 import { Server, NodeMessage, SendOptions } from 'veza';
@@ -27,7 +27,7 @@ export class MasterIPC {
 		return 'megane:service:' + serviceName;
 	}
 
-	public sendTo(recipient: string, data: any, options: SendOptions = { }) {
+	public sendTo(recipient: string, data: IPCEvent, options: SendOptions = { }) {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
@@ -37,7 +37,7 @@ export class MasterIPC {
 		return this.server.sendTo('megane:' + recipient, data, options);
 	}
 
-	public broadcast(data: any, options: SendOptions = { }) {
+	public broadcast(data: IPCEvent, options: SendOptions = { }) {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
@@ -54,7 +54,7 @@ export class MasterIPC {
 
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		const { success, d } = await this.server.sendTo('megane:cluster:' + clusterId, { op: IPCEvents.EVAL, d: script }) as IPCResult;
+		const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op: IPCEvents.EVAL, d: script }) as IPCResult;
 		if (!success)
 			throw makeError(d as IPCError);
 
@@ -267,7 +267,7 @@ export class MasterIPC {
 	private async fetch(message: NodeMessage, data: any, op: IPCEvents) {
 		try {
 			if (data.clusterId) {
-				const { success, d } = await this.server.sendTo('megane:cluster:' + data.clusterId, { op, d: { query: data.query } }) as IPCResult;
+				const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query } }) as IPCResult;
 				if (!success)
 					return message.reply({ success: false, d });
 

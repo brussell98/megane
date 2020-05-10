@@ -6,8 +6,9 @@ import { BaseClusterWorker } from '../clusters/BaseClusterWorker';
 import { Service, ServiceOptions } from '../services/Service';
 import { BaseServiceWorker } from '../services/BaseServiceWorker';
 import { MasterIPC } from './MasterIPC';
-import { SharderEvents } from '../util/constants';
+import { SharderEvents, IPCEvents } from '../util/constants';
 import { ClientOptions } from 'eris';
+import { MeganeStats, IPCResult } from '../';
 import fetch from 'node-fetch';
 
 export interface SharderOptions {
@@ -29,6 +30,8 @@ export interface SharderOptions {
 	nodeArgs?: string[];
 	/** The socket/port for IPC to run on */
 	ipcSocket?: string | number;
+	/** How often to update stats (in milliseconds) */
+	statsInterval?: number;
 }
 
 interface SessionObject {
@@ -73,6 +76,9 @@ export class ShardManager extends EventEmitter {
 	public nodeArgs?: string[];
 	public ipcSocket: string | number;
 	public readonly ipc?: MasterIPC;
+	/** Megane manager, cluster, and service stats */
+	public stats?: MeganeStats;
+	public statsInterval: number;
 
 	public constructor(options: SharderOptions) {
 		super();
@@ -86,11 +92,43 @@ export class ShardManager extends EventEmitter {
 		this.timeout = options.timeout || 30e3;
 		this.nodeArgs = options.nodeArgs;
 		this.ipcSocket = options.ipcSocket || 8191;
+		this.statsInterval = options.statsInterval || 60e3;
 
 		if (isMaster) {
 			this.clusters = new Map<number, Cluster>();
 			this.services = new Map<string, Service>();
 			this.ipc = new MasterIPC(this);
+			this.stats = {
+				clusters: { },
+				services: { },
+				manager: {
+					memory: process.memoryUsage(),
+					cpu: process.cpuUsage()
+				}
+			};
+
+			setInterval(async () => {
+				try {
+					this.debug('Updating stats');
+					const responses = await this.ipc!.broadcast({ op: IPCEvents.GET_STATS }, { receptive: true }) as IPCResult[];
+					for (const response of responses) {
+						const data = response.d as any;
+						if (typeof data.source === 'number')
+							this.stats!.clusters[data.source] = data.stats;
+						else
+							this.stats!.services[data.source] = data.stats;
+					}
+
+					this.stats!.manager = {
+						memory: process.memoryUsage(),
+						cpu: process.cpuUsage()
+					};
+
+					this.emit(SharderEvents.STATS_UPDATED, this.stats);
+				} catch (error) {
+					this.emit(SharderEvents.ERROR, error);
+				}
+			}, this.statsInterval);
 		}
 	}
 
@@ -280,6 +318,8 @@ export interface ShardManager {
 	on(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
 	on(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emitted when the manager updates the statistics object */
+	on(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emits debug messages */
 	on(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -302,6 +342,8 @@ export interface ShardManager {
 	once(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
 	once(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emitted when the manager updates the statistics object */
+	once(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emits debug messages */
 	once(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -324,6 +366,8 @@ export interface ShardManager {
 	off(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
 	off(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	/** Emitted when the manager updates the statistics object */
+	off(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emits debug messages */
 	off(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -346,6 +390,8 @@ export interface ShardManager {
 	emit(event: SharderEvents.SHARD_RESUMED, clusterId: number, shardId: number): boolean;
 	/** Emitted when a shard disconnects */
 	emit(event: SharderEvents.SHARD_DISCONNECT, clusterId: number, shardId: number, error: Error): boolean;
+	/** Emitted when the manager updates the statistics object */
+	emit(event: SharderEvents.STATS_UPDATED, stats: MeganeStats): this;
 	/** Emits debug messages */
 	emit(event: SharderEvents.DEBUG, message: string): boolean;
 	/** Emitted when there is an error */
