@@ -19,6 +19,7 @@ Features to be added after 1.0:
 - Rolling restart helper
 - Re-sharding
 - Improve IPC usability (need suggestions)
+- A way to easily extend the stats returned by workers
 
 ## Using
 
@@ -131,13 +132,13 @@ ServiceWorker:
 index.js -> ShardManager -> service.js -> ServiceWorkerIPC
 ```
 
-### Changelog
-
-Refer to [CHANGELOG.md](CHANGELOG.md)
-
 ### Documentation
 
 Refer to [DOCUMENTATION.md](DOCUMENTATION.md)
+
+### Changelog
+
+Refer to [CHANGELOG.md](CHANGELOG.md)
 
 ## Naming
 

@@ -84,6 +84,7 @@ export class Service extends EventEmitter {
 			throw new Error('This service already has a spawned worker');
 
 		this.worker = fork({
+			NODE_ENV: process.env.NODE_ENV,
 			SERVICE_NAME: this.name,
 			SERVICE_PATH: this.path
 		});

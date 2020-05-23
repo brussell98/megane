@@ -24,7 +24,7 @@ export interface SharderOptions {
 	clusterCount?: number;
 	/** Options to pass to the Eris client constructor */
 	clientOptions?: ClientOptions;
-	/** How long to wait for a cluster to connect before throwing an error, multiplied by the number of thousands of guilds */
+	/** How long to wait for a cluster to connect before throwing an error, multiplied by the number of shards */
 	timeout?: number;
 	/** An array of arguments to pass to the cluster node processes */
 	nodeArgs?: string[];

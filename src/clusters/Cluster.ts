@@ -89,6 +89,7 @@ export class Cluster extends EventEmitter {
 			throw new Error('This cluster already has a spawned worker');
 
 		this.worker = fork({
+			NODE_ENV: process.env.NODE_ENV,
 			FIRST_SHARD: this.shards.first.toString(),
 			LAST_SHARD: this.shards.last.toString(),
 			TOTAL_SHARDS: this.shards.total.toString(),
@@ -111,7 +112,7 @@ export class Cluster extends EventEmitter {
 			});
 
 			setTimeout(() => reject(new Error(`Cluster ${this.id} took too long to get ready`)),
-				this.manager.timeout * this.shards.total * (this.manager.guildsPerShard / 1000));
+				this.manager.timeout * this.shards.total);
 		});
 	}
 
