@@ -14,6 +14,7 @@ export enum IPCEvents {
 	FETCH_GUILD = 'fetchGuild',
 	FETCH_CHANNEL = 'fetchChannel',
 	SERVICE_COMMAND = 'serviceCommand',
+	CLUSTER_COMMAND = 'clusterCommand',
 	GET_STATS = 'getStats'
 }
 

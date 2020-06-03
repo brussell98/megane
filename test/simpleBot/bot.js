@@ -18,6 +18,18 @@ module.exports = class Bot extends BaseClusterWorker {
 			this[command](message, args);
 	}
 
+	async handleCommand(data, receptive) {
+		if (data.op === 'GET_USER_GUILDS') {
+			if (!data.userId)
+				return this.asError(new Error('A userId is required'));
+
+			return this.asResponse(this.client.guilds.filter(guild => guild.members.has(data.userId)).map(g => this.ipc.sanitizeErisObject(g.toJSON())));
+		}
+
+		if (receptive)
+			return this.asError(new Error('Unknown command'));
+	}
+
 	async shutdown() {
 		console.log('[Cluster] Shutting down...');
 		await super.shutdown();
@@ -63,7 +75,7 @@ module.exports = class Bot extends BaseClusterWorker {
 		if (!/^\d+$/.test(args))
 			return message.channel.createMessage('Post id required');
 
-		const data = await this.ipc.sendCommand('json-api', { op: 'GET_POST', postId: args }, { receptive: true });
+		const data = await this.ipc.sendServiceCommand('json-api', { op: 'GET_POST', postId: args }, { receptive: true });
 		return message.channel.createMessage(JSON.stringify(data, null, '\t'));
 	}
 }

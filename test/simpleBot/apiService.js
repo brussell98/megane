@@ -1,10 +1,27 @@
 const { BaseServiceWorker, IPCEvents, Util } = require('../../dist');
 const fetch = require('node-fetch');
+const { inspect } = require('util');
 
 module.exports = class JsonAPI extends BaseServiceWorker {
 	async launch() {
 		await this.getInitialData();
 		await this.sendReady();
+
+		setTimeout(async () => {
+			try {
+				console.log('[Service] Testing cluster commands');
+				const guilds = await this.ipc.sendClusterCommand({ all: true }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+				console.log('all:', guilds);
+
+				const guilds2 = await this.ipc.sendClusterCommand({ clusterId: 0 }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+				console.log('Cluster 0:', guilds2);
+
+				const guilds3 = await this.ipc.sendClusterCommand({ guildId: '360620343729061908' }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+				console.log('Guild id:', guilds3);
+			} catch (error) {
+				console.error(error);
+			}
+		}, 5e3);
 	}
 
 	async handleCommand(data, receptive) {

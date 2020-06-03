@@ -2,6 +2,8 @@ import { ClusterWorkerIPC } from './ClusterWorkerIPC';
 import { ShardManager } from '../sharding/ShardManager';
 import { Client, ClientOptions, Guild, AnyChannel, User } from 'eris';
 import { IPCEvents } from '../util/constants';
+import { transformError } from '../util/util';
+import { IPCResult } from '../';
 
 export abstract class BaseClusterWorker {
 	/** The worker's Eris client */
@@ -30,8 +32,14 @@ export abstract class BaseClusterWorker {
 		this.client.on('connect', shardId => this.ipc.send({ op: IPCEvents.SHARD_CONNECTED, d: { id: this.id, shardId } }));
 		this.client.on('shardReady', shardId => this.ipc.send({ op: IPCEvents.SHARD_READY, d: { id: this.id, shardId } }));
 		this.client.on('shardResume', shardId => this.ipc.send({ op: IPCEvents.SHARD_RESUMED, d: { id: this.id, shardId } }));
-		this.client.on('shardDisconnect', (error, id) => this.ipc.send({ op: IPCEvents.SHARD_DISCONNECTED, d: { id: this.id, shardId: id, error } }));
-		this.client.on('error', (error, shardId) => this.ipc.send({ op: IPCEvents.ERROR, d: { id: this.id, shardId, error } }));
+		this.client.on('shardDisconnect', (error, id) => this.ipc.send({
+			op: IPCEvents.SHARD_DISCONNECTED,
+			d: { id: this.id, shardId: id, error: transformError(error) }
+		}));
+		this.client.on('error', (error, shardId) => this.ipc.send({
+			op: IPCEvents.ERROR,
+			d: { id: this.id, shardId, error: transformError(error) }
+		}));
 
 		await this.launch();
 	}
@@ -51,6 +59,15 @@ export abstract class BaseClusterWorker {
 	 * @abstract
 	 */
 	protected abstract launch(): Promise<void> | void;
+
+	/**
+	 * Is called when a CLUSTER_COMMAND event is received.
+	 * If the event is receptive then an IPCResult must be returned.
+	 */
+	public async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void> {
+		if (receptive)
+			return this.asError(new Error('Clusters are not set up to handle commands'));
+	}
 
 	public async eval(script: string) {
 		// eslint-disable-next-line no-eval
@@ -81,5 +98,15 @@ export abstract class BaseClusterWorker {
 
 	public getGuild(id: string): Guild | null {
 		return this.client.guilds.get(id) || null;
+	}
+
+	/** Formats data as a response to an IPC event or command */
+	public asResponse(data: any) {
+		return { success: true, d: data };
+	}
+
+	/** Formats an error as a response to an IPC event or command */
+	public asError(error: Error) {
+		return { success: false, d: transformError(error) };
 	}
 }

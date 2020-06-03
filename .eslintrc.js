@@ -83,10 +83,10 @@ module.exports = {
 		'@typescript-eslint/semi': 'error',
 		'@typescript-eslint/consistent-type-assertions': 'off',
 		'@typescript-eslint/no-var-requires': 'off',
-		'@typescript-eslint/explicit-function-return-type': 'off',
 		'@typescript-eslint/no-explicit-any': 'off',
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-non-null-assertion': 'off',
-		'@typescript-eslint/interface-name-prefix': 'off'
+		'@typescript-eslint/interface-name-prefix': 'off',
+		'@typescript-eslint/explicit-module-boundary-types': 'off'
 	}
 };

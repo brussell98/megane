@@ -1,9 +1,11 @@
-import { IPCEvent, IPCResult, IPCError, IPCEvalResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseClusterWorker } from './BaseClusterWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
 import { EventEmitter } from 'events';
-import { makeError } from '../util/util';
+import { makeError, transformError } from '../util/util';
+import { ClusterCommandRecipient } from '../sharding/MasterIPC';
+import { User, Channel, Guild } from 'eris';
 
 export class ClusterWorkerIPC extends EventEmitter {
 	[key: string]: any; // Used to make code like "this['ready']" work
@@ -43,10 +45,13 @@ export class ClusterWorkerIPC extends EventEmitter {
 	}
 
 	/** Run an eval on the master process sharding manager */
-	public async sendMasterEval(script: string | Function) {
+	public async sendMasterEval(script: string | ((...args: any[]) => any), options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		const { success, d } = await this.server.send({ op: IPCEvents.EVAL, d: script }) as IPCResult;
+		if (options.receptive === undefined)
+			options.receptive = false;
+
+		const { success, d } = await this.server.send({ op: IPCEvents.EVAL, d: script }, options) as IPCResult;
 		if (!success)
 			throw makeError(d as IPCError);
 
@@ -54,10 +59,13 @@ export class ClusterWorkerIPC extends EventEmitter {
 	}
 
 	/** Run an eval on a specific service */
-	public async sendServiceEval(script: string | Function, serviceName: string) {
+	public async sendServiceEval(script: string | ((...args: any[]) => any), serviceName: string, options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { serviceName, script } }) as IPCResult;
+		if (options.receptive === undefined)
+			options.receptive = false;
+
+		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { serviceName, script } }, options) as IPCResult;
 		if (!success)
 			throw makeError(d as IPCError);
 
@@ -65,27 +73,51 @@ export class ClusterWorkerIPC extends EventEmitter {
 	}
 
 	/** Run an eval on all services */
-	public async broadcastServiceEval(script: string | Function) {
+	public async broadcastServiceEval(script: string | ((...args: any[]) => any), options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { script } }) as IPCResult;
+		if (options.receptive === undefined)
+			options.receptive = false;
+
+		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { script } }, options) as IPCResult;
 		if (!success)
 			throw makeError(d as IPCError);
 
+		(d as any).errors = (d as any).errors.map((error: Error) => makeError(error));
 		return d as IPCEvalResults;
 	}
 
 	/** Send a command to a service */
-	public async sendCommand(serviceName: string, data: any, options: SendOptions = { }) {
+	public async sendServiceCommand(serviceName: string, data: any, options: SendOptions = { }) {
 		if (typeof data !== 'object')
 			throw new Error('Message data not an object');
 
 		if (options.receptive === undefined)
 			options.receptive = false;
 
-		data.serviceName = serviceName;
+		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_COMMAND, d: { serviceName, d: data } }, options) as IPCResult;
+		if (!options.receptive)
+			return;
 
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_COMMAND, d: data }, options) as IPCResult;
+		if (!success)
+			throw makeError(d);
+
+		return d as unknown[];
+	}
+
+	/** Send a command to a cluster or all clusters */
+	public async sendClusterCommand(recipient: ClusterCommandRecipient, data: any, options: SendOptions = { }) {
+		if (typeof data !== 'object')
+			throw new Error('Message data not an object');
+
+		if (options.receptive === undefined)
+			options.receptive = false;
+
+		const { success, d } = await this.server.send({
+			op: IPCEvents.CLUSTER_COMMAND,
+			d: Object.assign({ d: data }, recipient)
+		}, options) as IPCResult;
+
 		if (!options.receptive)
 			return;
 
@@ -101,7 +133,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d;
+		return d as User | IPCFetchResults<User>;
 	}
 
 	public async fetchChannel(id: string, clusterId?: number) {
@@ -110,7 +142,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d;
+		return d as Channel | IPCFetchResults<Channel>;
 	}
 
 	public async fetchGuild(id: string, clusterId?: number) {
@@ -119,7 +151,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d;
+		return d as Guild | IPCFetchResults<Guild>;
 	}
 
 	private handleMessage(message: NodeMessage) {
@@ -129,9 +161,9 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private async ['_' + IPCEvents.EVAL](message: NodeMessage, data: string) {
 		try {
 			const result = await this.worker.eval(data);
-			return message.reply({ success: true, d: result });
+			return message.receptive && message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.reply({ success: false, d: { name: error.name, message: error.message, stack: error.stack } });
+			return message.receptive && message.reply({ success: false, d: transformError(error) });
 		}
 	}
 
@@ -142,19 +174,53 @@ export class ClusterWorkerIPC extends EventEmitter {
 		process.exit(0);
 	}
 
+	public sanitizeErisObject(obj: any, depth = 0, maxDepth = 3) {
+		if (!obj)
+			return obj;
+
+		if (depth >= maxDepth)
+			return obj.toString();
+
+		for (const key of Object.keys(obj)) {
+			if (!obj[key])
+				continue;
+
+			if (obj[key].toJSON)
+				obj[key] = this.sanitizeErisObject(obj[key].toJSON(), depth + 1, maxDepth);
+			else if (obj[key].constructor.name === 'Object')
+				obj[key] = this.sanitizeErisObject(obj[key], depth + 1, maxDepth);
+			else if (Array.isArray(obj[key]))
+				obj[key] = obj[key].map((v: any) => this.sanitizeErisObject(v, depth + 1, maxDepth));
+		}
+
+		return obj;
+	}
+
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
-		const result = this.worker.getUser(data.query)?.toJSON() || null;
+		const result = this.sanitizeErisObject(this.worker.getUser(data.query)?.toJSON() || null);
 		return message.reply({ success: true, d: { found: result !== null, result } });
 	}
 
 	private ['_' + IPCEvents.FETCH_CHANNEL](message: NodeMessage, data: any) {
-		const result = this.worker.getChannel(data.query)?.toJSON() || null;
+		const result = this.sanitizeErisObject(this.worker.getChannel(data.query)?.toJSON() || null);
 		return message.reply({ success: true, d: { found: result !== null, result } });
 	}
 
 	private ['_' + IPCEvents.FETCH_GUILD](message: NodeMessage, data: any) {
-		const result = this.worker.getGuild(data.query)?.toJSON() || null;
+		const result = this.sanitizeErisObject(this.worker.getGuild(data.query)?.toJSON() || null);
 		return message.reply({ success: true, d: { found: result !== null, result } });
+	}
+
+	private async ['_' + IPCEvents.CLUSTER_COMMAND](message: NodeMessage, data: string) {
+		try {
+			if (!message.receptive)
+				this.worker.handleCommand(data, false);
+
+			const result = await this.worker.handleCommand(data, true);
+			return message.reply(result);
+		} catch (error) {
+			return message.reply({ success: false, d: transformError(error) });
+		}
 	}
 
 	private ['_' + IPCEvents.GET_STATS](message: NodeMessage) {

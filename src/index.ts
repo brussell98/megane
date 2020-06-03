@@ -32,6 +32,12 @@ export interface IPCEvalResults {
 	errors: IPCError[];
 }
 
+export interface IPCFetchResults<T> {
+	found: boolean;
+	results: T[];
+	errors: IPCError[];
+}
+
 export interface ProcessStats {
 	/** https://nodejs.org/api/process.html#process_process_memoryusage */
 	memory: NodeJS.MemoryUsage;

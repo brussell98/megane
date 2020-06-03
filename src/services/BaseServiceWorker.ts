@@ -1,6 +1,7 @@
 import { ServiceWorkerIPC } from './ServiceWorkerIPC';
 import { ShardManager } from '../sharding/ShardManager';
 import { IPCEvents } from '../util/constants';
+import { transformError } from '../util/util';
 import { IPCResult } from '../';
 
 export abstract class BaseServiceWorker {
@@ -27,7 +28,7 @@ export abstract class BaseServiceWorker {
 
 	/** Notify the master process that this service is ready (required) */
 	protected sendReady() {
-		return this.ipc.server.send({ op: IPCEvents.READY, d: { name: this.name } });
+		return this.ipc.send({ op: IPCEvents.READY, d: { name: this.name } });
 	}
 
 	/** Can be implemented to allow for graceful shutdown of the service */
@@ -47,9 +48,11 @@ export abstract class BaseServiceWorker {
 	/**
 	 * Is called when a SERVICE_COMMAND event is received.
 	 * If the event is receptive then an IPCResult must be returned.
-	 * @abstract
 	 */
-	public abstract async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void>;
+	public async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void> {
+		if (receptive)
+			return this.asError(new Error('This service is not set up to handle commands'));
+	}
 
 	/** Formats data as a response to an IPC event or command */
 	public asResponse(data: any) {
@@ -58,6 +61,6 @@ export abstract class BaseServiceWorker {
 
 	/** Formats an error as a response to an IPC event or command */
 	public asError(error: Error) {
-		return { success: false, d: { name: error.name, message: error.message, stack: error.stack } };
+		return { success: false, d: transformError(error) };
 	}
 }

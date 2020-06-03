@@ -23,3 +23,11 @@ The master process (the manager) automatically collects stats about all of it's 
 ## IPC
 
 Work in progress...
+
+### Fetch Guilds, Channels, and Users
+
+Work in progress...
+
+### Commands
+
+Work in progress...
