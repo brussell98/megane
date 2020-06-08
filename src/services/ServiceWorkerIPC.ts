@@ -151,7 +151,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 	private async ['_' + IPCEvents.SERVICE_COMMAND](message: NodeMessage, data: string) {
 		try {
 			if (!message.receptive)
-				this.worker.handleCommand(data, false);
+				return this.worker.handleCommand(data, false);
 
 			const result = await this.worker.handleCommand(data, true);
 			return message.reply(result);

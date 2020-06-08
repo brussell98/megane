@@ -164,7 +164,7 @@ export class MasterIPC {
 
 			name = MasterIPC.clusterRecipient(recipient.clusterId);
 		} else if (recipient.guildId) {
-			const shard = Number(BigInt(recipient.guildId) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
+			const shard = Number((BigInt(recipient.guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
 			for (const cluster of this.manager.clusters!.values())
 				if (cluster.shards.first <= shard && cluster.shards.last >= shard) {
 					name = MasterIPC.clusterRecipient(cluster.id);
@@ -453,7 +453,7 @@ export class MasterIPC {
 			if (typeof data.clusterId === 'number')
 				recipient = MasterIPC.clusterRecipient(data.clusterId);
 			else {
-				const shard = Number(BigInt(data.guildId) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
+				const shard = Number((BigInt(data.guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
 				for (const cluster of this.manager.clusters!.values())
 					if (cluster.shards.first <= shard && cluster.shards.last >= shard) {
 						recipient = MasterIPC.clusterRecipient(cluster.id);

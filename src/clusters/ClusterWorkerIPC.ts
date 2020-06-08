@@ -214,7 +214,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private async ['_' + IPCEvents.CLUSTER_COMMAND](message: NodeMessage, data: string) {
 		try {
 			if (!message.receptive)
-				this.worker.handleCommand(data, false);
+				return this.worker.handleCommand(data, false);
 
 			const result = await this.worker.handleCommand(data, true);
 			return message.reply(result);
