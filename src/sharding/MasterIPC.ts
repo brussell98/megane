@@ -34,24 +34,28 @@ export class MasterIPC {
 		return 'megane:service:' + serviceName;
 	}
 
-	public sendTo(recipient: string, data: IPCEvent, options: SendOptions = { }) {
+	public async sendTo(recipient: string, data: IPCEvent, options: SendOptions = { }): Promise<IPCResult> {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
 		if (options.receptive === undefined)
 			options.receptive = false;
 
-		return this.server.sendTo('megane:' + recipient, data, options);
+		const response = await this.server.sendTo(recipient, data, options);
+
+		return options.receptive ? response : { success: true, d: null };
 	}
 
-	public broadcast(data: IPCEvent, options: BroadcastOptions = { }) {
+	public async broadcast(data: IPCEvent, options: BroadcastOptions = { }): Promise<IPCResult[]> {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
 		if (options.receptive === undefined)
 			options.receptive = false;
 
-		return this.server.broadcast(data, options);
+		const response = await this.server.broadcast(data, options);
+
+		return options.receptive ? response : [];
 	}
 
 	/** Run an eval on a specific cluster */
@@ -61,14 +65,11 @@ export class MasterIPC {
 
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op: IPCEvents.EVAL, d: script }, options) as IPCResult;
+		const { success, d } = await this.sendTo(MasterIPC.clusterRecipient(clusterId), { op: IPCEvents.EVAL, d: script }, options);
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	/** Run an eval on all clusters */
@@ -76,10 +77,8 @@ export class MasterIPC {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
 		options.filter = /^megane:cluster:/;
-		if (options.receptive === undefined)
-			options.receptive = false;
 
-		const responses = await this.server.broadcast({ op: IPCEvents.EVAL, d: script }, options) as IPCResult[];
+		const responses = await this.broadcast({ op: IPCEvents.EVAL, d: script }, options);
 
 		return {
 			results: responses.filter(res => res.success).map(res => res.d),
@@ -94,14 +93,11 @@ export class MasterIPC {
 
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.sendTo(MasterIPC.serviceRecipient(serviceName), { op: IPCEvents.SERVICE_EVAL, d: script }, options) as IPCResult;
+		const { success, d } = await this.sendTo(MasterIPC.serviceRecipient(serviceName), { op: IPCEvents.SERVICE_EVAL, d: script }, options);
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d as any;
+		return d as unknown;
 	}
 
 	/** Run an eval on all services */
@@ -109,10 +105,8 @@ export class MasterIPC {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
 		options.filter = /^megane:service:/;
-		if (options.receptive === undefined)
-			options.receptive = false;
 
-		const responses = await this.server.broadcast({ op: IPCEvents.SERVICE_EVAL, d: { script } }, options) as IPCResult[];
+		const responses = await this.broadcast({ op: IPCEvents.SERVICE_EVAL, d: { script } }, options);
 
 		return {
 			results: responses.filter(res => res.success).map(res => res.d),
@@ -128,28 +122,22 @@ export class MasterIPC {
 		if (!this.manager.services!.has(serviceName))
 			throw new Error('There is no service registered with this name');
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.sendTo(
+		const { success, d } = await this.sendTo(
 			MasterIPC.serviceRecipient(serviceName),
 			{ op: IPCEvents.SERVICE_COMMAND, d: data},
 			options
-		) as IPCResult;
+		);
 		if (!success)
 			throw makeError(d);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	/** Send a command to a cluster or all clusters */
 	public async sendClusterCommand(recipient: ClusterCommandRecipient, data: any, options: SendOptions = { }) {
-		if (options.receptive === undefined)
-			options.receptive = false;
-
 		if (recipient.all === true) {
 			const bOptions = <BroadcastOptions>{ ...options, filter: /^megane:cluster:/ };
-			const responses = await this.server.broadcast({ op: IPCEvents.CLUSTER_COMMAND, d: data }, bOptions) as IPCResult[];
+			const responses = await this.broadcast({ op: IPCEvents.CLUSTER_COMMAND, d: data }, bOptions);
 
 			return {
 				results: responses.filter(res => res.success).map(res => res.d),
@@ -176,15 +164,15 @@ export class MasterIPC {
 		if (!name)
 			throw new Error('No cluster was found matching the parameters supplied');
 
-		const { success, d } = await this.server.sendTo(
+		const { success, d } = await this.sendTo(
 			name,
 			{ op: IPCEvents.CLUSTER_COMMAND, d: data },
 			options
-		) as IPCResult;
+		);
 		if (!success)
 			throw makeError(d);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	public async fetchUser(query: string, clusterId?: number) {
@@ -283,11 +271,11 @@ export class MasterIPC {
 				else
 					await cluster.kill();
 
-				return message.receptive && message.reply({ success: true, d: { workerId: cluster.worker?.id } });
+				return message.reply({ success: true, d: { workerId: cluster.worker?.id } });
 			}
 
 			if (!this.manager.services!.has(clientId))
-				return message.receptive && message.reply({ success: false, d: {
+				return message.reply({ success: false, d: {
 					name: 'Error', message: 'Unable to shut down sender because it is not a known cluster'
 				} });
 
@@ -297,18 +285,18 @@ export class MasterIPC {
 			else
 				await service.kill();
 
-			return message.receptive && message.reply({ success: true, d: { workerId: service.worker?.id } });
+			return message.reply({ success: true, d: { workerId: service.worker?.id } });
 		} catch (error) {
-			return message.receptive && message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error) });
 		}
 	}
 
 	private async ['_' + IPCEvents.EVAL](message: NodeMessage, data: string) {
 		try {
 			const result = await this.manager.eval(data);
-			return message.receptive && message.reply({ success: true, d: result });
+			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.receptive && message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error) });
 		}
 	}
 
@@ -316,26 +304,27 @@ export class MasterIPC {
 		try {
 			if (data.serviceName !== undefined) {
 				if (!this.manager.services!.has(data.serviceName))
-					return message.receptive && message.reply({ success: false, d: {
+					return message.reply({ success: false, d: {
 						name: 'Error', message: 'There is no service registered with this name'
 					} });
 
-				const result = await this.server.sendTo(MasterIPC.serviceRecipient(data.serviceName), { op: IPCEvents.SERVICE_EVAL, d: data.script });
-				return message.receptive && message.reply(result);
+				const result = await this.sendTo(MasterIPC.serviceRecipient(data.serviceName), { op: IPCEvents.SERVICE_EVAL, d: data.script },
+					{ receptive: message.receptive });
+				return message.reply(result);
 			}
 
 
-			const responses = await this.server.broadcast(
+			const responses = await this.broadcast(
 				{ op: IPCEvents.SERVICE_EVAL, d: data.script },
 				{ receptive: message.receptive, filter: /^megane:service:/ }
-			) as IPCResult[];
+			);
 
-			return message.receptive && message.reply({ success: true, d: {
+			return message.reply({ success: true, d: {
 				results: responses.filter(res => res.success).map(res => res.d),
 				errors: responses.filter(res => !res.success).map(res => transformError(res.d as IPCError))
 			} });
 		} catch (error) {
-			return message.receptive && message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error) });
 		}
 	}
 
@@ -355,8 +344,7 @@ export class MasterIPC {
 		const replaced = this.manager.store.has(data.key);
 		this.manager.store.set(data.key, data.value);
 
-		if (message.receptive)
-			message.reply({ success: true, d: { replaced } });
+		return message.reply({ success: true, d: { replaced } });
 	}
 
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
@@ -382,13 +370,8 @@ export class MasterIPC {
 
 	private async relayFetch(message: NodeMessage, data: any, op: IPCEvents) {
 		try {
-			if (typeof data.clusterId === 'number') {
-				const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query } }) as IPCResult;
-				if (!success)
-					return message.reply({ success: false, d });
-
-				return message.reply({ success: true, d });
-			}
+			if (typeof data.clusterId === 'number')
+				return message.reply(await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query } }));
 
 			const responses = await this.server.broadcast({ op, d: { query: data.query } }, { filter: /^megane:cluster:/ }) as IPCResult[];
 			const errors = [];
@@ -411,18 +394,17 @@ export class MasterIPC {
 	private async ['_' + IPCEvents.SERVICE_COMMAND](message: NodeMessage, data: any) {
 		try {
 			if (!data.serviceName)
-				return message.receptive && message.reply({ success: false, d: {
+				return message.reply({ success: false, d: {
 					name: 'Error', message: 'A serviceName must be provided for SERVICE_COMMAND messages'
 				} });
 
-			const response = await this.server.sendTo(
+			const response = await this.sendTo(
 				MasterIPC.serviceRecipient(data.serviceName),
 				{ op: IPCEvents.SERVICE_COMMAND, d: data.d },
 				{ receptive: message.receptive }
-			) as IPCResult;
+			);
 
-			if (message.receptive)
-				return message.reply(response);
+			return message.reply(response);
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
 		}
@@ -431,17 +413,17 @@ export class MasterIPC {
 	private async ['_' + IPCEvents.CLUSTER_COMMAND](message: NodeMessage, data: any) {
 		try {
 			if (typeof data.clusterId !== 'number' && !data.guildId && !data.all)
-				return message.receptive && message.reply({ success: false, d: {
+				return message.reply({ success: false, d: {
 					name: 'Error', message: 'A clusterId, guildId, or "all" boolean must be provided for CLUSTER_COMMAND messages'
 				} });
 
 			if (data.all === true) {
-				const responses = await this.server.broadcast(
+				const responses = await this.broadcast(
 					{ op: IPCEvents.CLUSTER_COMMAND, d: data.d },
 					{ receptive: message.receptive, filter: /^megane:cluster:/ }
-				) as IPCResult[];
+				);
 
-				return message.receptive && message.reply({
+				return message.reply({
 					success: true, d: {
 						results: responses.filter(res => res.success).map(res => res.d),
 						errors: responses.filter(res => !res.success).map(res => transformError(res.d as IPCError))
@@ -462,16 +444,15 @@ export class MasterIPC {
 			}
 
 			if (!recipient)
-				return message.receptive && message.reply({ success: false, d: { name: 'Error', message: 'No cluster was found matching the parameters supplied' } });
+				return message.reply({ success: false, d: { name: 'Error', message: 'No cluster was found matching the parameters supplied' } });
 
-			const response = await this.server.sendTo(
+			const response = await this.sendTo(
 				recipient,
 				{ op: IPCEvents.CLUSTER_COMMAND, d: data.d },
 				{ receptive: message.receptive }
-			) as IPCResult;
+			);
 
-			if (message.receptive)
-				return message.reply(response);
+			return message.reply(response);
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
 		}

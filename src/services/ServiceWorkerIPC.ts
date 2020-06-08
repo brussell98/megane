@@ -1,4 +1,4 @@
-import { IPCEvent, IPCResult, IPCError } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseServiceWorker } from './BaseServiceWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
@@ -33,27 +33,26 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return this.clientSocket!;
 	}
 
-	public send(data: IPCEvent, options: SendOptions = { }) {
+	public async send(data: IPCEvent, options: SendOptions = { }): Promise<IPCResult> {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
 		if (options.receptive === undefined)
 			options.receptive = false;
 
-		return this.server.send(data, options);
+		const response = await this.server.send(data, options) as IPCResult;
+
+		return options.receptive ? response : { success: true, d: null };
 	}
 
 	public async sendMasterEval(script: string | ((...args: any[]) => any), options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.EVAL, d: script }, options) as IPCResult;
+		const { success, d } = await this.send({ op: IPCEvents.EVAL, d: script }, options);
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	public async fetchUser(query: string, clusterId?: number) {
@@ -88,24 +87,24 @@ export class ServiceWorkerIPC extends EventEmitter {
 		if (typeof data !== 'object')
 			throw new Error('Message data not an object');
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({
+		const { success, d } = await this.send({
 			op: IPCEvents.CLUSTER_COMMAND,
 			d: Object.assign({ d: data }, recipient)
-		}, options) as IPCResult;
+		}, options);
 
 		if (!options.receptive)
-			return;
+			return null;
 
 		if (!success)
 			throw makeError(d);
 
-		if (recipient.all)
+		if (recipient.all) {
 			(d as any).errors = (d as any).errors.map((error: Error) => makeError(error));
 
-		return d as unknown[];
+			return d as IPCEvalResults;
+		}
+
+		return d as unknown;
 	}
 
 	/** Send a command to a service */
@@ -113,17 +112,12 @@ export class ServiceWorkerIPC extends EventEmitter {
 		if (typeof data !== 'object')
 			throw new Error('Message data not an object');
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_COMMAND, d: { serviceName, d: data } }, options) as IPCResult;
-		if (!options.receptive)
-			return;
+		const { success, d } = await this.send({ op: IPCEvents.SERVICE_COMMAND, d: { serviceName, d: data } }, options);
 
 		if (!success)
 			throw makeError(d);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	private handleMessage(message: NodeMessage) {
@@ -133,9 +127,9 @@ export class ServiceWorkerIPC extends EventEmitter {
 	private async ['_' + IPCEvents.SERVICE_EVAL](message: NodeMessage, data: string) {
 		try {
 			const result = await this.worker.eval(data);
-			return message.receptive && message.reply({ success: true, d: result });
+			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.receptive && message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error) });
 		}
 	}
 

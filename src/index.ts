@@ -28,7 +28,7 @@ export interface IPCError {
 }
 
 export interface IPCEvalResults {
-	results: any[];
+	results: unknown[];
 	errors: IPCError[];
 }
 

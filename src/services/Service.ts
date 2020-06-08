@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { SharderEvents, IPCEvents } from '../util/constants';
 import * as Util from '../util/util';
 import { SendOptions } from 'veza';
+import { MasterIPC } from '../sharding/MasterIPC';
 
 export interface ServiceOptions {
 	name: string;
@@ -30,7 +31,7 @@ export class Service extends EventEmitter {
 	}
 
 	public send(data: any, options: SendOptions = { }) {
-		return this.manager.ipc!.sendTo('service:' + this.name, data, options);
+		return this.manager.ipc!.sendTo(MasterIPC.serviceRecipient(this.name), data, options);
 	}
 
 	/**
@@ -54,7 +55,7 @@ export class Service extends EventEmitter {
 				this.worker.once('exit', exitListener);
 
 				// Send command to shut down
-				this.manager.ipc!.sendTo('service:' + this.name, { op: IPCEvents.SHUTDOWN });
+				this.send({ op: IPCEvents.SHUTDOWN });
 
 				if (timeout > 0)
 					timeoutRef = setTimeout(() => {

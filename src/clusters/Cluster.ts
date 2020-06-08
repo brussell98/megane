@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { SharderEvents, IPCEvents } from '../util/constants';
 import * as Util from '../util/util';
 import { SendOptions } from 'veza';
+import { MasterIPC } from '../sharding/MasterIPC';
 
 interface ShardOptions {
 	first: number;
@@ -35,7 +36,7 @@ export class Cluster extends EventEmitter {
 	}
 
 	public send(data: any, options: SendOptions = { }) {
-		return this.manager.ipc!.sendTo('cluster:' + this.id, data, options);
+		return this.manager.ipc!.sendTo(MasterIPC.clusterRecipient(this.id), data, options);
 	}
 
 	/**
@@ -59,7 +60,7 @@ export class Cluster extends EventEmitter {
 				this.worker.once('exit', exitListener);
 
 				// Send command to shut down
-				this.manager.ipc!.sendTo('cluster:' + this.id, { op: IPCEvents.SHUTDOWN });
+				this.send({ op: IPCEvents.SHUTDOWN });
 
 				if (timeout > 0)
 					timeoutRef = setTimeout(() => {

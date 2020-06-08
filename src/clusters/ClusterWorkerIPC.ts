@@ -34,54 +34,50 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return this.clientSocket!;
 	}
 
-	public send(data: IPCEvent, options: SendOptions = { }) {
+	public async send(data: IPCEvent, options: SendOptions = { }): Promise<IPCResult> {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
 
 		if (options.receptive === undefined)
 			options.receptive = false;
 
-		return this.server.send(data, options);
+		const response = await this.server.send(data, options) as IPCResult;
+
+		return options.receptive ? response : { success: true, d: null };
 	}
 
 	/** Run an eval on the master process sharding manager */
 	public async sendMasterEval(script: string | ((...args: any[]) => any), options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.EVAL, d: script }, options) as IPCResult;
+		const { success, d } = await this.send({ op: IPCEvents.EVAL, d: script }, options);
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	/** Run an eval on a specific service */
 	public async sendServiceEval(script: string | ((...args: any[]) => any), serviceName: string, options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { serviceName, script } }, options) as IPCResult;
+		const { success, d } = await this.send({ op: IPCEvents.SERVICE_EVAL, d: { serviceName, script } }, options);
 		if (!success)
 			throw makeError(d as IPCError);
 
-		return d as any;
+		return d as unknown;
 	}
 
 	/** Run an eval on all services */
 	public async broadcastServiceEval(script: string | ((...args: any[]) => any), options: SendOptions = { }) {
 		script = typeof script === 'function' ? `(${script})(this)` : script;
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_EVAL, d: { script } }, options) as IPCResult;
+		const { success, d } = await this.send({ op: IPCEvents.SERVICE_EVAL, d: { script } }, options);
 		if (!success)
 			throw makeError(d as IPCError);
+
+		if (!options.receptive)
+			return null;
 
 		(d as any).errors = (d as any).errors.map((error: Error) => makeError(error));
 		return d as IPCEvalResults;
@@ -92,17 +88,12 @@ export class ClusterWorkerIPC extends EventEmitter {
 		if (typeof data !== 'object')
 			throw new Error('Message data not an object');
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({ op: IPCEvents.SERVICE_COMMAND, d: { serviceName, d: data } }, options) as IPCResult;
-		if (!options.receptive)
-			return;
+		const { success, d } = await this.send({ op: IPCEvents.SERVICE_COMMAND, d: { serviceName, d: data } }, options);
 
 		if (!success)
 			throw makeError(d);
 
-		return d as unknown[];
+		return d as unknown;
 	}
 
 	/** Send a command to a cluster or all clusters */
@@ -110,21 +101,24 @@ export class ClusterWorkerIPC extends EventEmitter {
 		if (typeof data !== 'object')
 			throw new Error('Message data not an object');
 
-		if (options.receptive === undefined)
-			options.receptive = false;
-
-		const { success, d } = await this.server.send({
+		const { success, d } = await this.send({
 			op: IPCEvents.CLUSTER_COMMAND,
 			d: Object.assign({ d: data }, recipient)
-		}, options) as IPCResult;
+		}, options);
 
 		if (!options.receptive)
-			return;
+			return null;
 
 		if (!success)
 			throw makeError(d);
 
-		return d as unknown[];
+		if (recipient.all) {
+			(d as any).errors = (d as any).errors.map((error: Error) => makeError(error));
+
+			return d as IPCEvalResults;
+		}
+
+		return d as unknown;
 	}
 
 	public async fetchUser(query: string, clusterId?: number) {
@@ -161,9 +155,9 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private async ['_' + IPCEvents.EVAL](message: NodeMessage, data: string) {
 		try {
 			const result = await this.worker.eval(data);
-			return message.receptive && message.reply({ success: true, d: result });
+			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.receptive && message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error) });
 		}
 	}
 
