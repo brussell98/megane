@@ -30,4 +30,40 @@ Work in progress...
 
 ### Commands
 
-Work in progress...
+Megane provides an easy way to execute code on other clusters or on services.
+
+#### Sending Commands
+
+```js
+const data = {
+	// The data you are sending
+};
+
+const options = {
+	receptive: true, // If you expect a response
+	timeout: 10e3 // Optional maximum time to wait for a response
+};
+
+// Send a command to a service
+this.ipc.sendServiceCommand('service-name', { ...data }, { ...options });
+// Send a command to all clusters, response is an IPCEvalResults: { results: [], errors: [] }
+this.ipc.sendClusterCommand({ all: true }, { ...data }, { ...options });
+// Send a command to a cluster
+this.ipc.sendClusterCommand({ clusterId: 0 }, { ...data }, { ...options });
+// Send a command to a cluster handling a certain guild
+this.ipc.sendClusterCommand({ guildId: '446425626988249089' }, { ...data }, { ...options });
+```
+
+#### Handling Commands
+
+```ts
+async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void> {
+	// Handle the command however you want
+
+	// Receptive commands MUST have a return value
+	// To send a response:
+	return this.asResponse(response: any);
+	// To send an error
+	return this.asError(new Error('An error'));
+}
+```
