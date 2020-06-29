@@ -9,6 +9,10 @@ module.exports = class Bot extends BaseClusterWorker {
 		this.client.on('messageCreate', this.handleMessage.bind(this));
 	}
 
+	allClustersReady() {
+		console.log('[Cluster] All clusters ready');
+	}
+
 	handleMessage(message) {
 		if (message.bot || !message.content.startsWith('!'))
 			return;

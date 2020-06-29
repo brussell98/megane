@@ -174,6 +174,9 @@ export class ShardManager extends EventEmitter {
 
 			if (failed.length)
 				await this.retryFailed(failed);
+
+			this.ipc!.broadcast({ op: IPCEvents.READY });
+			this.emit(SharderEvents.ALL_CLUSTERS_READY);
 		} else {
 			// When the process is forked, load the worker module
 			let worker;
@@ -233,7 +236,7 @@ export class ShardManager extends EventEmitter {
 			}
 
 		if (failed.length)
-			return this.retryFailed(failed);
+			return await this.retryFailed(failed);
 	}
 
 	/** Register and spawn a service */
@@ -310,6 +313,8 @@ export interface ShardManager {
 	on(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
 	on(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a all clusters are ready */
+	on(event: SharderEvents.ALL_CLUSTERS_READY, listener: () => void): this;
 	/** Emitted when a shard connects (before ready) */
 	on(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -334,6 +339,8 @@ export interface ShardManager {
 	once(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
 	once(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a all clusters are ready */
+	once(event: SharderEvents.ALL_CLUSTERS_READY, listener: () => void): this;
 	/** Emitted when a shard connects (before ready) */
 	once(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -358,6 +365,8 @@ export interface ShardManager {
 	off(event: SharderEvents.CLUSTER_SPAWN, listener: (cluster: Cluster) => void): this;
 	/** Emitted when a cluster becomes ready */
 	off(event: SharderEvents.CLUSTER_READY, listener: (cluster: Cluster) => void): this;
+	/** Emitted when a all clusters are ready */
+	off(event: SharderEvents.ALL_CLUSTERS_READY, listener: () => void): this;
 	/** Emitted when a shard connects (before ready) */
 	off(event: SharderEvents.SHARD_CONNECTED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted the first time a shard becomes ready */
@@ -382,6 +391,8 @@ export interface ShardManager {
 	emit(event: SharderEvents.CLUSTER_SPAWN, cluster: Cluster): this;
 	/** Emitted when a cluster becomes ready */
 	emit(event: SharderEvents.CLUSTER_READY, cluster: Cluster): this;
+	/** Emitted when a all clusters are ready */
+	emit(event: SharderEvents.ALL_CLUSTERS_READY): this;
 	/** Emitted when a shard connects (before ready) */
 	emit(event: SharderEvents.SHARD_CONNECTED, clusterId: number, shardId: number): boolean;
 	/** Emitted the first time a shard becomes ready */

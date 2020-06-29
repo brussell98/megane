@@ -50,6 +50,7 @@ if (isMaster) {
 	manager.on('error', error => console.error(error)); // Not handling these errors will kill everything when any error is emitted
 	manager.on('debug', message => console.log(message));
 	manager.on('clusterReady', cluster => console.log(`Cluster ${cluster.id} ready`));
+	manager.once('allClustersReady', () => console.log('All clusters ready'));
 }
 ```
 This will create a new `ShardManager` which will run `bot.js` on separate processes. The worker file (`bot.js`) **must** implement a `BaseClusterWorker`. This will be demonstrated next.

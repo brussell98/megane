@@ -23,6 +23,7 @@ export enum SharderEvents {
 	SERVICE_READY = 'serviceReady',
 	CLUSTER_SPAWN = 'clusterSpawn',
 	CLUSTER_READY = 'clusterReady',
+	ALL_CLUSTERS_READY = 'allClustersReady',
 	SHARD_CONNECTED = 'shardConnected',
 	SHARD_READY = 'shardReady',
 	SHARD_RESUMED = 'shardResumed',

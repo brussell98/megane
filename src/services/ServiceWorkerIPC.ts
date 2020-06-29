@@ -1,10 +1,11 @@
-import { IPCEvent, IPCResult, IPCError, IPCEvalResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseServiceWorker } from './BaseServiceWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
 import { EventEmitter } from 'events';
 import { makeError, transformError } from '../util/util';
 import { ClusterCommandRecipient } from '../sharding/MasterIPC';
+import { User, Channel, Guild } from 'eris';
 
 export class ServiceWorkerIPC extends EventEmitter {
 	[key: string]: any; // Used to make code like "this['ready']" work
@@ -61,25 +62,52 @@ export class ServiceWorkerIPC extends EventEmitter {
 		if (!result.success)
 			throw makeError(result.d as IPCError);
 
-		return result.d;
+		return result.d as IPCFetchResults<User>;
+	}
+
+	public async fetchUsers(queries: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<User[]>;
 	}
 
 	public async fetchChannel(id: string, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { id, clusterId } }) as IPCResult;
+		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: id, clusterId } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
 
-		return result.d;
+		return result.d as IPCFetchResults<Channel>;
+	}
+
+	public async fetchChannels(ids: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: ids, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<Channel[]>;
 	}
 
 	public async fetchGuild(id: string, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { id, clusterId } }) as IPCResult;
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, clusterId } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
 
-		return result.d;
+		return result.d as IPCFetchResults<Guild>;
+	}
+
+	public async fetchGuilds(ids: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<Guild[]>;
 	}
 
 	/** Send a command to a cluster or all clusters */
@@ -122,6 +150,11 @@ export class ServiceWorkerIPC extends EventEmitter {
 
 	private handleMessage(message: NodeMessage) {
 		this['_' + message.data.op](message, message.data.d);
+	}
+
+	private async ['_' + IPCEvents.READY]() {
+		if (this.worker.allClustersReady)
+			this.worker.allClustersReady();
 	}
 
 	private async ['_' + IPCEvents.SERVICE_EVAL](message: NodeMessage, data: string) {

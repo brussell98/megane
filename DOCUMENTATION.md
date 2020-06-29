@@ -1,3 +1,9 @@
+## Startup
+
+### All Clusters Ready
+
+You can wait to execute code until all clusters have emitted their first "ready" event. For the master process, the sharder emits a `allClustersReady` event. For workers, there is an `allClustersReady()` method that will be called. This is useful if you want your services to not start doing things until they have access to all data.
+
 ## Restart and Shutdown
 
 ### Clusters

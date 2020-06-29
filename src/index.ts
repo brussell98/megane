@@ -33,9 +33,10 @@ export interface IPCEvalResults {
 }
 
 export interface IPCFetchResults<T> {
-	found: boolean;
-	results: T[];
-	errors: IPCError[];
+	/** Found documents in JSON format. For access to Eris getters and methods you must pass the data to the relevant Eris constructor */
+	result: T;
+	/** If a clusterId was not specified, and not getting a single guild, this contains any errors that occurred */
+	errors?: IPCError[];
 }
 
 export interface ProcessStats {

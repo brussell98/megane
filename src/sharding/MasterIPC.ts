@@ -34,6 +34,24 @@ export class MasterIPC {
 		return 'megane:service:' + serviceName;
 	}
 
+	public getClusterIdForGuild(guildId: string) {
+		const shard = Number((BigInt(guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
+		for (const cluster of this.manager.clusters!.values())
+			if (cluster.shards.first <= shard && cluster.shards.last >= shard)
+				return cluster.id;
+
+		return null;
+	}
+
+	public getRecipientForGuild(guildId: string) {
+		const shard = Number((BigInt(guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
+		for (const cluster of this.manager.clusters!.values())
+			if (cluster.shards.first <= shard && cluster.shards.last >= shard)
+				return MasterIPC.clusterRecipient(cluster.id);
+
+		return null;
+	}
+
 	public async sendTo(recipient: string, data: IPCEvent, options: SendOptions = { }): Promise<IPCResult> {
 		if (typeof data !== 'object' || data.op === undefined)
 			throw new Error('Message data not an object, or no op code was specified');
@@ -151,14 +169,9 @@ export class MasterIPC {
 				throw new Error('There is no cluster with this id');
 
 			name = MasterIPC.clusterRecipient(recipient.clusterId);
-		} else if (recipient.guildId) {
-			const shard = Number((BigInt(recipient.guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
-			for (const cluster of this.manager.clusters!.values())
-				if (cluster.shards.first <= shard && cluster.shards.last >= shard) {
-					name = MasterIPC.clusterRecipient(cluster.id);
-					break;
-				}
-		} else
+		} else if (recipient.guildId)
+			name = this.getRecipientForGuild(recipient.guildId);
+		else
 			throw new Error('No recipient was specified');
 
 		if (!name)
@@ -179,24 +192,48 @@ export class MasterIPC {
 		if (!query || typeof query !== 'string')
 			throw new Error('User query is required, and must be a string');
 
-		return this.fetch(query, clusterId, IPCEvents.FETCH_USER) as Promise<User[] | IPCFetchResults<User>>;
+		return this.fetch(query, clusterId, IPCEvents.FETCH_USER) as Promise<User | IPCFetchResults<User>>;
+	}
+
+	public async fetchUsers(queries: string[], clusterId?: number) {
+		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string'))
+			throw new Error('User queries are required, and they must be strings');
+
+		return this.fetch(queries, clusterId, IPCEvents.FETCH_USER) as Promise<User[] | IPCFetchResults<User[]>>;
 	}
 
 	public async fetchChannel(query: string, clusterId?: number) {
 		if (!query || typeof query !== 'string' || !/^[0-9]+$/.test(query))
 			throw new Error('Channel query is required, and must be an id as a string');
 
-		return this.fetch(query, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel[] | IPCFetchResults<Channel>>;
+		return this.fetch(query, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel | IPCFetchResults<Channel>>;
+	}
+
+	public async fetchChannels(queries: string[], clusterId?: number) {
+		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+			throw new Error('Channel queries are required, and they must be ids as strings');
+
+		return this.fetch(queries, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel[] | IPCFetchResults<Channel[]>>;
 	}
 
 	public async fetchGuild(query: string, clusterId?: number) {
 		if (!query || typeof query !== 'string' || !/^[0-9]+$/.test(query))
 			throw new Error('Guild query is required, and must be an id as a string');
 
-		return this.fetch(query, clusterId, IPCEvents.FETCH_GUILD) as Promise<Guild[] | IPCFetchResults<Guild>>;
+		if (!clusterId)
+			clusterId = this.getClusterIdForGuild(query) || undefined;
+
+		return this.fetch(query, clusterId, IPCEvents.FETCH_GUILD) as Promise<Guild | IPCFetchResults<Guild>>;
 	}
 
-	private async fetch(query: string, clusterId: number | undefined, op: IPCEvents) {
+	public async fetchGuilds(queries: string[], clusterId?: number) {
+		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+			throw new Error('Guild queries are required, and they must be ids as strings');
+
+		return this.fetch(queries, clusterId, IPCEvents.FETCH_GUILD) as Promise<Guild[] | IPCFetchResults<Guild[]>>;
+	}
+
+	private async fetch(query: string | string[], clusterId: number | undefined, op: IPCEvents) {
 		if (typeof clusterId === 'number') {
 			const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op, d: { query } }) as IPCResult;
 			if (!success)
@@ -206,18 +243,24 @@ export class MasterIPC {
 		}
 
 		const responses = await this.server.broadcast({ op, d: { query } }, { filter: /^megane:cluster:/ }) as IPCResult[];
+		const isBatch = Array.isArray(query);
 		const errors = [];
-		let result;
+		let result = isBatch ? [] : undefined;
 
 		for (const { success, d } of responses) {
 			if (!success)
 				errors.push(d);
 
-			if (!result && (d as any).found === true)
-				result = (d as any).result;
+			const data = d as any;
+
+			if (!isBatch) {
+				if (!result && data.result)
+					result = data.result;
+			} else if (data.result && data.result.length !== 0)
+				result = result!.concat(data.result);
 		}
 
-		return { found: result !== undefined, result, errors };
+		return { result, errors };
 	}
 
 	private handleMessage(message: NodeMessage) {
@@ -348,22 +391,34 @@ export class MasterIPC {
 	}
 
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
-		if (!data.query || typeof data.query !== 'string')
-			return message.reply({ success: false, d: { name: 'Error', message: 'User query is required, and must be a string' } });
+		if (!data.query || (typeof data.query === 'string'
+			? false
+			: !Array.isArray(data.query) || data.query.some((e: any) => typeof e !== 'string'))
+		)
+			return message.reply({ success: false, d: { name: 'Error', message: 'User query is required, and must be a string or array of strings' } });
 
 		return this.relayFetch(message, data, IPCEvents.FETCH_USER);
 	}
 
 	private ['_' + IPCEvents.FETCH_CHANNEL](message: NodeMessage, data: any) {
-		if (!data.query || typeof data.query !== 'string' || !/^[0-9]+$/.test(data.query))
-			return message.reply({ success: false, d: { name: 'Error', message: 'Channel query is required, and must be an id as a string' } });
+		if (!data.query || (typeof data.query === 'string'
+			? !/^[0-9]+$/.test(data.query)
+			: !Array.isArray(data.query) || data.query.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+		)
+			return message.reply({ success: false, d: { name: 'Error', message: 'Channel query is required, and must be an id as a string or array of id strings' } });
 
 		return this.relayFetch(message, data, IPCEvents.FETCH_CHANNEL);
 	}
 
 	private ['_' + IPCEvents.FETCH_GUILD](message: NodeMessage, data: any) {
-		if (!data.query || typeof data.query !== 'string' || !/^[0-9]+$/.test(data.query))
-			return message.reply({ success: false, d: { name: 'Error', message: 'Guild query is required, and must be an id as a string' } });
+		if (!data.query || (typeof data.query === 'string'
+			? !/^[0-9]+$/.test(data.query)
+			: !Array.isArray(data.query) || data.query.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+		)
+			return message.reply({ success: false, d: { name: 'Error', message: 'Guild query is required, and must be an id as a string or array of id strings' } });
+
+		if (!data.clusterId && typeof data.query === 'string')
+			data.clusterId = this.getClusterIdForGuild(data.query);
 
 		return this.relayFetch(message, data, IPCEvents.FETCH_GUILD);
 	}
@@ -374,18 +429,24 @@ export class MasterIPC {
 				return message.reply(await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query } }));
 
 			const responses = await this.server.broadcast({ op, d: { query: data.query } }, { filter: /^megane:cluster:/ }) as IPCResult[];
+			const isBatch = Array.isArray(data.query);
 			const errors = [];
-			let result;
+			let result = isBatch ? [] : undefined;
 
 			for (const { success, d } of responses) {
 				if (!success)
 					errors.push(d);
 
-				if (!result && (d as any).found === true)
-					result = (d as any).result;
+				const data = d as any;
+
+				if (!isBatch) {
+					if (!result && data.result)
+						result = data.result;
+				} else if (data.result && data.result.length !== 0)
+					result = result!.concat(data.result);
 			}
 
-			return message.reply({ success: true, d: { found: result !== undefined, result, errors } });
+			return message.reply({ success: true, d: { result, errors } });
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
 		}
@@ -434,14 +495,8 @@ export class MasterIPC {
 			let recipient;
 			if (typeof data.clusterId === 'number')
 				recipient = MasterIPC.clusterRecipient(data.clusterId);
-			else {
-				const shard = Number((BigInt(data.guildId) >> BigInt(22)) % BigInt(this.manager.clusters!.get(0)?.shards.total || 0));
-				for (const cluster of this.manager.clusters!.values())
-					if (cluster.shards.first <= shard && cluster.shards.last >= shard) {
-						recipient = MasterIPC.clusterRecipient(cluster.id);
-						break;
-					}
-			}
+			else
+				recipient = this.getRecipientForGuild(data.guildId);
 
 			if (!recipient)
 				return message.reply({ success: false, d: { name: 'Error', message: 'No cluster was found matching the parameters supplied' } });

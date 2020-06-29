@@ -40,6 +40,12 @@ export abstract class BaseServiceWorker {
 	 */
 	protected abstract launch(): Promise<void> | void;
 
+	/**
+	 * Is called only once, when all clusters have emitted a ready event on startup
+	 * @abstract
+	 */
+	public abstract allClustersReady(): Promise<void> | void;
+
 	public async eval(script: string) {
 		// eslint-disable-next-line no-eval
 		return await eval(script);

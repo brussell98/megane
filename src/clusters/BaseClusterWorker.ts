@@ -61,6 +61,12 @@ export abstract class BaseClusterWorker {
 	protected abstract launch(): Promise<void> | void;
 
 	/**
+	 * Is called only once, when all clusters have emitted a ready event on startup
+	 * @abstract
+	 */
+	public abstract allClustersReady(): Promise<void> | void;
+
+	/**
 	 * Is called when a CLUSTER_COMMAND event is received.
 	 * If the event is receptive then an IPCResult must be returned.
 	 */
@@ -77,7 +83,7 @@ export abstract class BaseClusterWorker {
 	public getUser(query: string): User | null {
 		query = query.toLowerCase().trim();
 
-		if (/^[0-9]{16,19}$/.test(query)) { // If query looks like an ID try to get by ID
+		if (/^[0-9]{16,19}$/.test(query)) { // If query looks like an id try to get by id
 			const user = this.client.users.get(query);
 			if (user)
 				return user;

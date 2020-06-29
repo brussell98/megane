@@ -122,34 +122,66 @@ export class ClusterWorkerIPC extends EventEmitter {
 	}
 
 	public async fetchUser(query: string, clusterId?: number) {
-		const { success, d } = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId } }) as IPCResult;
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId } }) as IPCResult;
 
-		if (!success)
-			throw makeError(d as IPCError);
+		if (!result.success)
+			throw makeError(result.d as IPCError);
 
-		return d as User | IPCFetchResults<User>;
+		return result.d as IPCFetchResults<User>;
+	}
+
+	public async fetchUsers(queries: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<User[]>;
 	}
 
 	public async fetchChannel(id: string, clusterId?: number) {
-		const { success, d } = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { id, clusterId } }) as IPCResult;
+		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: id, clusterId } }) as IPCResult;
 
-		if (!success)
-			throw makeError(d as IPCError);
+		if (!result.success)
+			throw makeError(result.d as IPCError);
 
-		return d as Channel | IPCFetchResults<Channel>;
+		return result.d as IPCFetchResults<Channel>;
+	}
+
+	public async fetchChannels(ids: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: ids, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<Channel[]>;
 	}
 
 	public async fetchGuild(id: string, clusterId?: number) {
-		const { success, d } = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { id, clusterId } }) as IPCResult;
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, clusterId } }) as IPCResult;
 
-		if (!success)
-			throw makeError(d as IPCError);
+		if (!result.success)
+			throw makeError(result.d as IPCError);
 
-		return d as Guild | IPCFetchResults<Guild>;
+		return result.d as IPCFetchResults<Guild>;
+	}
+
+	public async fetchGuilds(ids: string[], clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, clusterId } }) as IPCResult;
+
+		if (!result.success)
+			throw makeError(result.d as IPCError);
+
+		return result.d as IPCFetchResults<Guild[]>;
 	}
 
 	private handleMessage(message: NodeMessage) {
 		this['_' + message.data.op](message, message.data.d);
+	}
+
+	private async ['_' + IPCEvents.READY]() {
+		if (this.worker.allClustersReady)
+			this.worker.allClustersReady();
 	}
 
 	private async ['_' + IPCEvents.EVAL](message: NodeMessage, data: string) {
@@ -191,18 +223,45 @@ export class ClusterWorkerIPC extends EventEmitter {
 	}
 
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
-		const result = this.sanitizeErisObject(this.worker.getUser(data.query)?.toJSON() || null);
-		return message.reply({ success: true, d: { found: result !== null, result } });
+		try {
+			if (Array.isArray(data.query)) {
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getUser(q)?.toJSON() || null)).filter((e: any) => !!e);
+				return message.reply({ success: true, d: { result } });
+			}
+
+			const result = this.sanitizeErisObject(this.worker.getUser(data.query)?.toJSON() || null);
+			return message.reply({ success: true, d: { result } });
+		} catch (error) {
+			return message.reply({ success: false, d: transformError(error) });
+		}
 	}
 
 	private ['_' + IPCEvents.FETCH_CHANNEL](message: NodeMessage, data: any) {
-		const result = this.sanitizeErisObject(this.worker.getChannel(data.query)?.toJSON() || null);
-		return message.reply({ success: true, d: { found: result !== null, result } });
+		try {
+			if (Array.isArray(data.query)) {
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getChannel(q)?.toJSON() || null)).filter((e: any) => !!e);
+				return message.reply({ success: true, d: { result } });
+			}
+
+			const result = this.sanitizeErisObject(this.worker.getChannel(data.query)?.toJSON() || null);
+			return message.reply({ success: true, d: { result } });
+		} catch (error) {
+			return message.reply({ success: false, d: transformError(error) });
+		}
 	}
 
 	private ['_' + IPCEvents.FETCH_GUILD](message: NodeMessage, data: any) {
-		const result = this.sanitizeErisObject(this.worker.getGuild(data.query)?.toJSON() || null);
-		return message.reply({ success: true, d: { found: result !== null, result } });
+		try {
+			if (Array.isArray(data.query)) {
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getGuild(q)?.toJSON() || null)).filter((e: any) => !!e);
+				return message.reply({ success: true, d: { result } });
+			}
+
+			const result = this.sanitizeErisObject(this.worker.getGuild(data.query)?.toJSON() || null);
+			return message.reply({ success: true, d: { result } });
+		} catch (error) {
+			return message.reply({ success: false, d: transformError(error) });
+		}
 	}
 
 	private async ['_' + IPCEvents.CLUSTER_COMMAND](message: NodeMessage, data: string) {

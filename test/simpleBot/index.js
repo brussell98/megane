@@ -26,6 +26,7 @@ if (isMaster) {
 	sharder.on('statsUpdated', stats => console.log(inspect(stats, null, null)));
 	sharder.on('clusterReady', cluster => console.log(`Cluster ${cluster.id} ready`));
 	sharder.on('serviceReady', service => console.log(`Service ${service.name} ready`));
+	sharder.on('allClustersReady', () => console.log('All clusters ready'));
 
 	sharder.registerService(__dirname + '/apiService.js', { name: 'json-api' });
 
@@ -34,7 +35,7 @@ if (isMaster) {
 			console.log(await sharder.ipc.fetchGuild('360620343729061908'));
 			console.log(await sharder.ipc.fetchChannel('374769149429284864'));
 			console.log(await sharder.ipc.fetchUser('95286900801146880'));
-			console.log(await sharder.ipc.fetchUser('95286900801146881'));
+			console.log(await sharder.ipc.fetchUsers(['95286900801146880', '191489507680452609']));
 		} catch (error) {
 			console.error(error);
 		}
