@@ -1,8 +1,6 @@
 # Megane
 
-A sharding manager for Discord bots. Megane distributes your shards across (logical) CPU cores. Megane uses [Eris](https://github.com/abalabahaha/eris) to interface with the Discord API.
-
-Based on [Kurasuta](https://github.com/DevYukine/Kurasuta).
+A sharding manager for Discord bots. Megane distributes your shards across (logical) CPU cores. Megane uses [Eris](https://github.com/abalabahaha/eris) to interface with the Discord API. Based on [Kurasuta](https://github.com/DevYukine/Kurasuta).
 
 ## Features
 
@@ -14,6 +12,10 @@ Based on [Kurasuta](https://github.com/DevYukine/Kurasuta).
 - Create worker processes to interact with APIs or do other expensive or central tasks
 - Automatic collection of statistics
 
+Features to add before 1.0:
+
+- (IPC) Optional messages in text channels
+
 Features to be added after 1.0:
 
 - Rolling restart helper
@@ -21,11 +23,18 @@ Features to be added after 1.0:
 - Improve IPC usability (need suggestions)
 - A way to easily extend the stats returned by workers
 
+## Considerations
+
+Splitting your bot into multiple processes should not be done unless needed. Megane has some downsides compared to how a normal bot works. Make sure you consider these first:
+
+- Developing will be more complicated due to the need to use ipc and lack of a complete local cache
+- Fetching users, channels, guilds, or other structures from other processes will remove the ability to use methods without manually recreating them. Certain properties may also be missing after converting to plain objects
+
 ## Using
 
-NPM package name: `@brussell98/megane`
+Package name: `@brussell98/megane`
 
-*You can see working examples by browsing the `test` folder*
+*You can see working examples by browsing the `examples` folder*
 
 ### Getting Started
 

@@ -27,7 +27,7 @@ module.exports = class Bot extends BaseClusterWorker {
 			if (!data.userId)
 				return this.asError(new Error('A userId is required'));
 
-			return this.asResponse(this.client.guilds.filter(guild => guild.members.has(data.userId)).map(g => this.ipc.sanitizeErisObject(g.toJSON())));
+			return this.asResponse(this.client.guilds.filter(guild => guild.members.has(data.userId)).map(g => this.ipc.sanitizeErisObject(g)));
 		}
 
 		if (receptive)

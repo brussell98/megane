@@ -26,7 +26,7 @@ module.exports = class JsonAPI extends BaseServiceWorker {
 				console.log('Fetched users:', fetchedUsers);
 
 				const fetchedGuilds = await this.ipc.fetchGuilds(['360620343729061908', '95288189362634752']);
-				console.log('Fetched guilds:', fetchedGuilds);
+				console.log('Fetched guilds:', inspect(fetchedGuilds, null, 100));
 			} catch (error) {
 				console.error(error);
 			}

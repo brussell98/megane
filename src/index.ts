@@ -1,3 +1,4 @@
+import './util/erisOverwrites';
 
 export { Cluster, ClusterOptions } from './clusters/Cluster';
 export { BaseClusterWorker } from './clusters/BaseClusterWorker';

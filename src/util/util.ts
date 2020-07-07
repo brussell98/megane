@@ -38,4 +38,3 @@ export function getIdFromSocketName(name: string | null): string | number | null
 
 	return parseInt(nameRegex[0], 10);
 }
-

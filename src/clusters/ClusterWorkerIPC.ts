@@ -157,8 +157,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Channel[]>;
 	}
 
-	public async fetchGuild(id: string, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, clusterId } }) as IPCResult;
+	public async fetchGuild(id: string, includeMembers?: string[] | boolean, clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, includeMembers, clusterId } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -166,8 +166,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Guild>;
 	}
 
-	public async fetchGuilds(ids: string[], clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, clusterId } }) as IPCResult;
+	public async fetchGuilds(ids: string[], includeMembers?: string[] | boolean, clusterId?: number) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, includeMembers, clusterId } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -200,12 +200,15 @@ export class ClusterWorkerIPC extends EventEmitter {
 		process.exit(0);
 	}
 
-	public sanitizeErisObject(obj: any, depth = 0, maxDepth = 3) {
+	public sanitizeErisObject(obj: any, depth = 0, maxDepth = 10) {
 		if (!obj)
 			return obj;
 
 		if (depth >= maxDepth)
 			return obj.toString();
+
+		if (obj.toJSON)
+			obj = obj.toJSON();
 
 		for (const key of Object.keys(obj)) {
 			if (!obj[key])
@@ -225,11 +228,11 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
 		try {
 			if (Array.isArray(data.query)) {
-				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getUser(q)?.toJSON() || null)).filter((e: any) => !!e);
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getUser(q) || null)).filter((e: any) => !!e);
 				return message.reply({ success: true, d: { result } });
 			}
 
-			const result = this.sanitizeErisObject(this.worker.getUser(data.query)?.toJSON() || null);
+			const result = this.sanitizeErisObject(this.worker.getUser(data.query) || null);
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
@@ -239,11 +242,11 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private ['_' + IPCEvents.FETCH_CHANNEL](message: NodeMessage, data: any) {
 		try {
 			if (Array.isArray(data.query)) {
-				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getChannel(q)?.toJSON() || null)).filter((e: any) => !!e);
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getChannel(q) || null)).filter((e: any) => !!e);
 				return message.reply({ success: true, d: { result } });
 			}
 
-			const result = this.sanitizeErisObject(this.worker.getChannel(data.query)?.toJSON() || null);
+			const result = this.sanitizeErisObject(this.worker.getChannel(data.query) || null);
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
@@ -253,11 +256,27 @@ export class ClusterWorkerIPC extends EventEmitter {
 	private ['_' + IPCEvents.FETCH_GUILD](message: NodeMessage, data: any) {
 		try {
 			if (Array.isArray(data.query)) {
-				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getGuild(q)?.toJSON() || null)).filter((e: any) => !!e);
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getGuild(q) || null)).filter((e: any) => !!e);
+				result.map((guild: any) => {
+					if (guild)
+						if (!data.options || !data.options.includeMembers)
+							delete guild.members;
+						else if (Array.isArray(data.options.includeMembers))
+							Object.keys(guild.members).forEach((id: string) => data.options.includeMembers.includes(id) ? null : delete guild.members[id]);
+
+					return guild;
+				});
+
 				return message.reply({ success: true, d: { result } });
 			}
 
-			const result = this.sanitizeErisObject(this.worker.getGuild(data.query)?.toJSON() || null);
+			const result = this.sanitizeErisObject(this.worker.getGuild(data.query) || null);
+			if (result)
+				if (!data.options || !data.options.includeMembers)
+					delete result.members;
+				else if (Array.isArray(data.options.includeMembers))
+					Object.keys(result.members).forEach((id: string) => data.options.includeMembers.includes(id) ? null : delete result.members[id]);
+
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });

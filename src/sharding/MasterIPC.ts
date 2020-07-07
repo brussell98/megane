@@ -216,33 +216,39 @@ export class MasterIPC {
 		return this.fetch(queries, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel[] | IPCFetchResults<Channel[]>>;
 	}
 
-	public async fetchGuild(query: string, clusterId?: number) {
+	public async fetchGuild(query: string, includeMembers?: string[] | boolean, clusterId?: number) {
 		if (!query || typeof query !== 'string' || !/^[0-9]+$/.test(query))
 			throw new Error('Guild query is required, and must be an id as a string');
+
+		if (Array.isArray(includeMembers) && includeMembers.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+			throw new Error('includeMembers must be a boolean or an array of user ids');
 
 		if (!clusterId)
 			clusterId = this.getClusterIdForGuild(query) || undefined;
 
-		return this.fetch(query, clusterId, IPCEvents.FETCH_GUILD) as Promise<Guild | IPCFetchResults<Guild>>;
+		return this.fetch(query, clusterId, IPCEvents.FETCH_GUILD, { includeMembers }) as Promise<Guild | IPCFetchResults<Guild>>;
 	}
 
-	public async fetchGuilds(queries: string[], clusterId?: number) {
+	public async fetchGuilds(queries: string[], includeMembers?: string[] | boolean, clusterId?: number) {
 		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
 			throw new Error('Guild queries are required, and they must be ids as strings');
 
-		return this.fetch(queries, clusterId, IPCEvents.FETCH_GUILD) as Promise<Guild[] | IPCFetchResults<Guild[]>>;
+		if (Array.isArray(includeMembers) && includeMembers.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+			throw new Error('includeMembers must be a boolean or an array of user ids');
+
+		return this.fetch(queries, clusterId, IPCEvents.FETCH_GUILD, { includeMembers }) as Promise<Guild[] | IPCFetchResults<Guild[]>>;
 	}
 
-	private async fetch(query: string | string[], clusterId: number | undefined, op: IPCEvents) {
+	private async fetch(query: string | string[], clusterId: number | undefined, op: IPCEvents, options?: any) {
 		if (typeof clusterId === 'number') {
-			const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op, d: { query } }) as IPCResult;
+			const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op, d: { query, options } }) as IPCResult;
 			if (!success)
 				throw makeError(d);
 
 			return d;
 		}
 
-		const responses = await this.server.broadcast({ op, d: { query } }, { filter: /^megane:cluster:/ }) as IPCResult[];
+		const responses = await this.server.broadcast({ op, d: { query, options } }, { filter: /^megane:cluster:/ }) as IPCResult[];
 		const isBatch = Array.isArray(query);
 		const errors = [];
 		let result = isBatch ? [] : undefined;
@@ -417,6 +423,9 @@ export class MasterIPC {
 		)
 			return message.reply({ success: false, d: { name: 'Error', message: 'Guild query is required, and must be an id as a string or array of id strings' } });
 
+		if (Array.isArray(data.includeMembers) && data.includeMembers.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
+			return message.reply({ success: false, d: { name: 'Error', message: 'includeMembers must be a boolean or an array of user ids' } });
+
 		if (!data.clusterId && typeof data.query === 'string')
 			data.clusterId = this.getClusterIdForGuild(data.query);
 
@@ -426,9 +435,9 @@ export class MasterIPC {
 	private async relayFetch(message: NodeMessage, data: any, op: IPCEvents) {
 		try {
 			if (typeof data.clusterId === 'number')
-				return message.reply(await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query } }));
+				return message.reply(await this.server.sendTo(MasterIPC.clusterRecipient(data.clusterId), { op, d: { query: data.query, options: data.options } }));
 
-			const responses = await this.server.broadcast({ op, d: { query: data.query } }, { filter: /^megane:cluster:/ }) as IPCResult[];
+			const responses = await this.server.broadcast({ op, d: { query: data.query, options: data.options } }, { filter: /^megane:cluster:/ }) as IPCResult[];
 			const isBatch = Array.isArray(data.query);
 			const errors = [];
 			let result = isBatch ? [] : undefined;

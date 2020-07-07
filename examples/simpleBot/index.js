@@ -32,7 +32,7 @@ if (isMaster) {
 
 	setTimeout(async () => {
 		try {
-			console.log(await sharder.ipc.fetchGuild('360620343729061908'));
+			console.log(inspect(await sharder.ipc.fetchGuild('360620343729061908', ['95286900801146880', '550185929654927370']), null, 100));
 			console.log(await sharder.ipc.fetchChannel('374769149429284864'));
 			console.log(await sharder.ipc.fetchUser('95286900801146880'));
 			console.log(await sharder.ipc.fetchUsers(['95286900801146880', '191489507680452609']));
