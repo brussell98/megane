@@ -7,30 +7,36 @@ module.exports = class JsonAPI extends BaseServiceWorker {
 		await this.getInitialData();
 		await this.sendReady();
 
-		setTimeout(async () => {
-			try {
-				console.log('[Service] Testing cluster commands');
-				const guilds = await this.ipc.sendClusterCommand({ all: true }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
-				console.log('all:', guilds);
+		// setTimeout(async () => {
+		// 	try {
+		// 		console.log('[Service] Testing cluster commands');
+		// 		const guilds = await this.ipc.sendClusterCommand({ all: true }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+		// 		console.log('all:', guilds);
 
-				const guilds2 = await this.ipc.sendClusterCommand({ clusterId: 0 }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
-				console.log('Cluster 0:', guilds2);
+		// 		const guilds2 = await this.ipc.sendClusterCommand({ clusterId: 0 }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+		// 		console.log('Cluster 0:', guilds2);
 
-				const guilds3 = await this.ipc.sendClusterCommand({ guildId: '360620343729061908' }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
-				console.log('Guild id:', guilds3);
+		// 		const guilds3 = await this.ipc.sendClusterCommand({ guildId: '360620343729061908' }, { op: 'GET_USER_GUILDS', userId: '95286900801146880' }, { receptive: true });
+		// 		console.log('Guild id:', guilds3);
 
-				const fetchedUser = await this.ipc.fetchUser('95286900801146880');
-				console.log('Fetched user:', fetchedUser);
+		// 		const fetchedUser = await this.ipc.fetchUser('95286900801146880');
+		// 		console.log('Fetched user:', fetchedUser);
 
-				const fetchedUsers = await this.ipc.fetchUsers(['95286900801146880', '191489507680452609']);
-				console.log('Fetched users:', fetchedUsers);
+		// 		const fetchedUsers = await this.ipc.fetchUsers(['95286900801146880', '191489507680452609']);
+		// 		console.log('Fetched users:', fetchedUsers);
 
-				const fetchedGuilds = await this.ipc.fetchGuilds(['360620343729061908', '95288189362634752']);
-				console.log('Fetched guilds:', inspect(fetchedGuilds, null, 100));
-			} catch (error) {
-				console.error(error);
-			}
-		}, 5e3);
+		// 		const fetchedGuilds = await this.ipc.fetchGuilds(['360620343729061908', '95288189362634752']);
+		// 		console.log('Fetched guilds:', inspect(fetchedGuilds, null, 100));
+		// 	} catch (error) {
+		// 		console.error(error);
+		// 	}
+		// }, 5e3);
+	}
+
+	getStats() {
+		return {
+			test: ['success', true]
+		};
 	}
 
 	async handleCommand(data, receptive) {

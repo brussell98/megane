@@ -1,6 +1,6 @@
 {
 	"name": "@brussell98/megane",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "A cluster management system for Discord bots",
 	"main": "dist/index.js",
 	"repository": "https://github.com/brussell98/megane",
@@ -17,13 +17,13 @@
 	},
 	"devDependencies": {
 		"@types/dotenv": "^8.2.0",
-		"@types/node": "^12.12.47",
+		"@types/node": "^12.12.54",
 		"@types/node-fetch": "^2.5.7",
-		"@typescript-eslint/eslint-plugin": "^3.6.0",
-		"@typescript-eslint/parser": "^3.6.0",
+		"@typescript-eslint/eslint-plugin": "^4.0.1",
+		"@typescript-eslint/parser": "^4.0.1",
 		"dotenv": "^8.2.0",
-		"eslint": "^7.4.0",
-		"typescript": "^3.9.6"
+		"eslint": "^7.8.1",
+		"typescript": "^4.0.2"
 	},
 	"keywords": [
 		"discord",

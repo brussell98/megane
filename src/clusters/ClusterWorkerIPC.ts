@@ -1,4 +1,4 @@
-import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults, ProcessStats } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseClusterWorker } from './BaseClusterWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
@@ -295,17 +295,29 @@ export class ClusterWorkerIPC extends EventEmitter {
 		}
 	}
 
-	private ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+	private async ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+		const userDefined = await this.worker.getStats?.();
+
+		const shardStatus: Record<string, any> = { };
+		const shardLatency: Record<string, number> = { };
+		this.worker.client.shards.forEach(shard => {
+			shardStatus[shard.id] = shard.status;
+			shardLatency[shard.id] = shard.latency;
+		});
+
 		return message.reply({ success: true, d: {
+			type: 'cluster',
 			source: this.worker.id,
-			stats: {
+			stats: <ProcessStats>{
 				memory: process.memoryUsage(),
 				cpu: process.cpuUsage(),
 				discord: {
 					guilds: this.worker.client.guilds.size,
-					latencies: this.worker.client.shards.map(shard => shard.latency),
-					uptime: this.worker.client.uptime
-				}
+					uptime: this.worker.client.uptime,
+					shardLatency,
+					shardStatus
+				},
+				...userDefined
 			}
 		} });
 	}

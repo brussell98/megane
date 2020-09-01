@@ -47,16 +47,18 @@ export interface ProcessStats {
 	cpu: NodeJS.CpuUsage;
 	discord?: {
 		guilds: number;
-		/** The current latency between the shard and Discord, in milliseconds */
-		latencies: number[];
 		/** How long in milliseconds the bot has been up for */
 		uptime: number;
+		/** The current latency between the shard and Discord, in milliseconds */
+		shardLatency: Record<string, number>;
+		/** The shard's connection status */
+		shardStatus: Record<string, 'disconnected' | 'connecting' | 'handshaking' | 'ready' | 'resuming'>;
 	};
 	[key: string]: any;
 }
 
 export interface MeganeStats {
-	clusters: Record<number, ProcessStats>;
+	clusters: Record<string, ProcessStats>;
 	services: Record<string, ProcessStats>;
 	manager: ProcessStats;
 	[key: string]: any;

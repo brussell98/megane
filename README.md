@@ -10,7 +10,7 @@ A sharding manager for Discord bots. Megane distributes your shards across (logi
 - Run eval over IPC
 - Restart individual clusters instead of the whole bot at once
 - Create worker processes to interact with APIs or do other expensive or central tasks
-- Automatic collection of statistics
+- Automatic and extensible collection of statistics
 
 Features to add before 1.0:
 
@@ -21,7 +21,6 @@ Features to be added after 1.0:
 - Rolling restart helper
 - Re-sharding
 - Improve IPC usability (need suggestions)
-- A way to easily extend the stats returned by workers
 
 ## Considerations
 

@@ -13,6 +13,14 @@ module.exports = class Bot extends BaseClusterWorker {
 		console.log('[Cluster] All clusters ready');
 	}
 
+	getStats() {
+		return Promise.resolve({
+			test: {
+				success: true
+			}
+		});
+	}
+
 	handleMessage(message) {
 		if (message.bot || !message.content.startsWith('!'))
 			return;

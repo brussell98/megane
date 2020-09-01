@@ -113,7 +113,7 @@ export class ShardManager extends EventEmitter {
 					const responses = await this.ipc!.broadcast({ op: IPCEvents.GET_STATS }, { receptive: true }) as IPCResult[];
 					for (const response of responses) {
 						const data = response.d as any;
-						if (typeof data.source === 'number')
+						if (data.type === 'cluster')
 							this.stats!.clusters[data.source] = data.stats;
 						else
 							this.stats!.services[data.source] = data.stats;

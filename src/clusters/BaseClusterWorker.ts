@@ -67,6 +67,12 @@ export abstract class BaseClusterWorker {
 	public abstract allClustersReady(): Promise<void> | void;
 
 	/**
+	 * Allows returning an object containing additional stats to return during stats collection
+	 * @abstract
+	 */
+	public abstract getStats(): Promise<Record<string, any>> | Record<string, any>;
+
+	/**
 	 * Is called when a CLUSTER_COMMAND event is received.
 	 * If the event is receptive then an IPCResult must be returned.
 	 */

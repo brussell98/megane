@@ -46,6 +46,12 @@ export abstract class BaseServiceWorker {
 	 */
 	public abstract allClustersReady(): Promise<void> | void;
 
+	/**
+	 * Allows returning an object containing additional stats to return during stats collection
+	 * @abstract
+	 */
+	public abstract getStats(): Promise<Record<string, any>> | Record<string, any>;
+
 	public async eval(script: string) {
 		// eslint-disable-next-line no-eval
 		return await eval(script);

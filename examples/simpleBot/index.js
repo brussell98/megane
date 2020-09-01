@@ -30,19 +30,19 @@ if (isMaster) {
 
 	sharder.registerService(__dirname + '/apiService.js', { name: 'json-api' });
 
-	setTimeout(async () => {
-		try {
-			console.log(inspect(await sharder.ipc.fetchGuild('360620343729061908', ['95286900801146880', '550185929654927370']), null, 100));
-			console.log(await sharder.ipc.fetchChannel('374769149429284864'));
-			console.log(await sharder.ipc.fetchUser('95286900801146880'));
-			console.log(await sharder.ipc.fetchUsers(['95286900801146880', '191489507680452609']));
-		} catch (error) {
-			console.error(error);
-		}
-	}, 10e3);
+	// setTimeout(async () => {
+	// 	try {
+	// 		console.log(inspect(await sharder.ipc.fetchGuild('360620343729061908', ['95286900801146880', '550185929654927370']), null, 100));
+	// 		console.log(await sharder.ipc.fetchChannel('374769149429284864'));
+	// 		console.log(await sharder.ipc.fetchUser('95286900801146880'));
+	// 		console.log(await sharder.ipc.fetchUsers(['95286900801146880', '191489507680452609']));
+	// 	} catch (error) {
+	// 		console.error(error);
+	// 	}
+	// }, 10e3);
 
-	setTimeout(() => sharder.restartAll(), 30e3);
-	setTimeout(() => sharder.services.get('json-api').respawn(), 45e3);
+	// setTimeout(() => sharder.restartAll(), 30e3);
+	// setTimeout(() => sharder.services.get('json-api').respawn(), 45e3);
 }
 
 sharder.spawn();

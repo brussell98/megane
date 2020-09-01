@@ -1,4 +1,4 @@
-import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults } from '..';
+import { IPCEvent, IPCResult, IPCError, IPCEvalResults, IPCFetchResults, ProcessStats } from '..';
 import { IPCEvents } from '../util/constants';
 import { BaseServiceWorker } from './BaseServiceWorker';
 import { Client, NodeMessage, SendOptions, ClientSocket } from 'veza';
@@ -187,13 +187,17 @@ export class ServiceWorkerIPC extends EventEmitter {
 		}
 	}
 
-	private ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+	private async ['_' + IPCEvents.GET_STATS](message: NodeMessage) {
+		const userDefined = await this.worker.getStats?.();
+
 		return message.reply({
 			success: true, d: {
+				type: 'service',
 				source: this.worker.name,
-				stats: {
+				stats: <ProcessStats>{
 					memory: process.memoryUsage(),
-					cpu: process.cpuUsage()
+					cpu: process.cpuUsage(),
+					...userDefined
 				}
 			}
 		});

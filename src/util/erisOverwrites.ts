@@ -1,37 +1,8 @@
-import { Base, Channel, ExtendedUser, GuildChannel, Member, Message, User } from 'eris';
+import { Base, Channel, Member, Message, User } from 'eris';
 
 Channel.prototype.toJSON = function(props: string[] = []) {
 	return Base.prototype.toJSON.call(this, [
 		'type',
-
-		'createdAt',
-		...props
-	]);
-};
-
-ExtendedUser.prototype.toJSON = function(props: string[] = []) {
-	return Base.prototype.toJSON.call(this, [
-		'email',
-		'mfaEnabled',
-		'premium',
-		'verified',
-
-		'createdAt',
-		'publicFlags',
-		'defaultAvatarURL',
-		'staticAvatarURL',
-		'avatarURL',
-		...props
-	]);
-};
-
-GuildChannel.prototype.toJSON = function(props: string[] = []) {
-	return Base.prototype.toJSON.call(this, [
-		'name',
-		'nsfw',
-		'parentID',
-		'permissionOverwrites',
-		'position',
 
 		'createdAt',
 		...props

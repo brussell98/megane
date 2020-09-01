@@ -73,3 +73,33 @@ async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void> {
 	return this.asError(new Error('An error'));
 }
 ```
+
+### Stats
+
+By default the `ShardManager` will collect stats every minute from all of the processes. Every time these stats are updated, the `SharderEvents.STATS_UPDATED` is emitted. You can also access the stats at any time through `shardManager.stats`. The stats object has this schema as seen in index.ts:
+
+```ts
+interface ProcessStats {
+	/** https://nodejs.org/api/process.html#process_process_memoryusage */
+	memory: NodeJS.MemoryUsage;
+	/** https://nodejs.org/api/process.html#process_process_cpuusage_previousvalue */
+	cpu: NodeJS.CpuUsage;
+	discord?: {
+		guilds: number;
+		/** How long in milliseconds the bot has been up for */
+		uptime: number;
+		/** The current latency between the shard and Discord, in milliseconds */
+		shardLatency: Record<string, number>;
+		/** The shard's connection status */
+		shardStatus: Record<string, 'disconnected' | 'connecting' | 'handshaking' | 'ready' | 'resuming'>;
+	};
+}
+
+interface MeganeStats {
+	clusters: Record<string, ProcessStats>;
+	services: Record<string, ProcessStats>;
+	manager: ProcessStats;
+}
+```
+
+Additionally, you can extend these as you need. Both cluster and service workers allow a `getStats()` method which must return an object to be merged with the existing stats. This method may be synchronous or asynchronous.
