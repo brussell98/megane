@@ -22,10 +22,6 @@ Each cluster and service worker has a method called `shutdown()` which is called
 
 When directly calling `kill()` you can specify a timeout in milliseconds. After this amount of time passes the process will be killed whether it has completed it's tasks or not.
 
-## Statistics
-
-The master process (the manager) automatically collects stats about all of it's workers. These can be accessed through `manager.stats` and are updated every minute. This interval can be changed with the `statsInterval` option. To see the structure of the stats object see the `MeganeStats` interface in [index.ts](./src/index.ts)
-
 ## IPC
 
 Work in progress...
@@ -74,9 +70,9 @@ async handleCommand(data: any, receptive: boolean): Promise<IPCResult | void> {
 }
 ```
 
-### Stats
+## Stats
 
-By default the `ShardManager` will collect stats every minute from all of the processes. Every time these stats are updated, the `SharderEvents.STATS_UPDATED` is emitted. You can also access the stats at any time through `shardManager.stats`. The stats object has this schema as seen in index.ts:
+By default the `ShardManager` will collect stats every minute from all of the processes. Every time these stats are updated, the `SharderEvents.STATS_UPDATED` is emitted. You can also access the stats at any time through `shardManager.stats`. The stats object has this schema as seen in [index.ts](./src/index.ts):
 
 ```ts
 interface ProcessStats {
@@ -102,4 +98,4 @@ interface MeganeStats {
 }
 ```
 
-Additionally, you can extend these as you need. Both cluster and service workers allow a `getStats()` method which must return an object to be merged with the existing stats. This method may be synchronous or asynchronous.
+Additionally, you can extend these as needed. Both cluster and service workers allow a `getStats()` method which must return an object to be merged with the existing stats. This method may be synchronous or asynchronous.
