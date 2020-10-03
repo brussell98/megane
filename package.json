@@ -1,6 +1,6 @@
 {
 	"name": "@brussell98/megane",
-	"version": "0.9.0",
+	"version": "0.10.0",
 	"description": "A cluster management system for Discord bots",
 	"main": "dist/index.js",
 	"repository": "https://github.com/brussell98/megane",

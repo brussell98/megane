@@ -4,6 +4,16 @@
 
 You can wait to execute code until all clusters have emitted their first "ready" event. For the master process, the sharder emits a `allClustersReady` event. For workers, there is an `allClustersReady()` method that will be called. This is useful if you want your services to not start doing things until they have access to all data.
 
+### All Members Cached
+
+Megane has custom caching logic you can enable with the `cacheAllMembers` option. This will *not* fetch guild members before ready, but instead after. When all shards on a cluster have their guild members cached then `allMembersCached(false)` will be called, if implemented.
+
+Once this is completed on all clusters then `allMembersCached(true)` will be called on all clusters, and `allMembersCached()` on services, if implemented.
+
+The `ShardManager` will also emit the `SharderEvents.ALL_MEMBERS_CACHED` event in each of these situations. When only one cluster has finished then the cluster id will be provided. Remember not to simply do `!cluserId`, as that will evaluate to true for cluster 0.
+
+Due to the functionality of this, the final call will always happen after `allClustersReady` is called.
+
 ## Restart and Shutdown
 
 ### Clusters

@@ -15,7 +15,8 @@ export enum IPCEvents {
 	FETCH_CHANNEL = 'fetchChannel',
 	SERVICE_COMMAND = 'serviceCommand',
 	CLUSTER_COMMAND = 'clusterCommand',
-	GET_STATS = 'getStats'
+	GET_STATS = 'getStats',
+	ALL_MEMBERS_CACHED = 'allMembersCached'
 }
 
 export enum SharderEvents {
@@ -29,6 +30,7 @@ export enum SharderEvents {
 	SHARD_RESUMED = 'shardResumed',
 	SHARD_DISCONNECT = 'shardDisconnect',
 	STATS_UPDATED = 'statsUpdated',
+	ALL_MEMBERS_CACHED = 'allMembersCached',
 	DEBUG = 'debug',
 	ERROR = 'error'
 }

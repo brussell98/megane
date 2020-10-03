@@ -32,6 +32,8 @@ export interface SharderOptions {
 	ipcSocket?: string | number;
 	/** How often to update stats (in milliseconds) */
 	statsInterval?: number;
+	/** Use custom guild member caching. Not compatible with eris' `getAllUsers` */
+	cacheAllMembers?: boolean;
 }
 
 interface SessionObject {
@@ -79,6 +81,7 @@ export class ShardManager extends EventEmitter {
 	/** Megane manager, cluster, and service stats */
 	public stats?: MeganeStats;
 	public statsInterval: number;
+	public cacheAllMembers: boolean;
 
 	public constructor(options: SharderOptions) {
 		super();
@@ -93,6 +96,7 @@ export class ShardManager extends EventEmitter {
 		this.nodeArgs = options.nodeArgs;
 		this.ipcSocket = options.ipcSocket || 8191;
 		this.statsInterval = options.statsInterval || 60e3;
+		this.cacheAllMembers = !!options.cacheAllMembers;
 
 		if (isMaster) {
 			this.clusters = new Map<number, Cluster>();
@@ -304,7 +308,7 @@ export class ShardManager extends EventEmitter {
 	}
 }
 
-export interface ShardManager {
+export interface ShardManager { // eslint-disable-line no-redeclare
 	/** Emitted when a service spawns */
 	on(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
 	/** Emitted when a service becomes ready */
@@ -325,6 +329,8 @@ export interface ShardManager {
 	on(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	on(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
+	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
+	on(event: SharderEvents.ALL_MEMBERS_CACHED, listener: (clusterId?: number) => void): this;
 	/** Emits debug messages */
 	on(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -351,6 +357,8 @@ export interface ShardManager {
 	once(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	once(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
+	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
+	once(event: SharderEvents.ALL_MEMBERS_CACHED, listener: (shardId?: number) => void): this;
 	/** Emits debug messages */
 	once(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -377,6 +385,8 @@ export interface ShardManager {
 	off(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	off(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
+	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
+	off(event: SharderEvents.ALL_MEMBERS_CACHED, listener: (shardId?: number) => void): this;
 	/** Emits debug messages */
 	off(event: SharderEvents.DEBUG, listener: (message: string) => void): this;
 	/** Emitted when there is an error */
@@ -384,15 +394,15 @@ export interface ShardManager {
 	off(event: any, listener: (...args: any[]) => void): this;
 
 	/** Emitted when a service spawns */
-	emit(event: SharderEvents.SERVICE_SPAWN, service: Service): this;
+	emit(event: SharderEvents.SERVICE_SPAWN, service: Service): boolean;
 	/** Emitted when a service becomes ready */
-	emit(event: SharderEvents.SERVICE_READY, service: Service): this;
+	emit(event: SharderEvents.SERVICE_READY, service: Service): boolean;
 	/** Emitted when a cluster spawns */
-	emit(event: SharderEvents.CLUSTER_SPAWN, cluster: Cluster): this;
+	emit(event: SharderEvents.CLUSTER_SPAWN, cluster: Cluster): boolean;
 	/** Emitted when a cluster becomes ready */
-	emit(event: SharderEvents.CLUSTER_READY, cluster: Cluster): this;
+	emit(event: SharderEvents.CLUSTER_READY, cluster: Cluster): boolean;
 	/** Emitted when a all clusters are ready */
-	emit(event: SharderEvents.ALL_CLUSTERS_READY): this;
+	emit(event: SharderEvents.ALL_CLUSTERS_READY): boolean;
 	/** Emitted when a shard connects (before ready) */
 	emit(event: SharderEvents.SHARD_CONNECTED, clusterId: number, shardId: number): boolean;
 	/** Emitted the first time a shard becomes ready */
@@ -402,7 +412,9 @@ export interface ShardManager {
 	/** Emitted when a shard disconnects */
 	emit(event: SharderEvents.SHARD_DISCONNECT, clusterId: number, shardId: number, error: Error): boolean;
 	/** Emitted when the manager updates the statistics object */
-	emit(event: SharderEvents.STATS_UPDATED, stats: MeganeStats): this;
+	emit(event: SharderEvents.STATS_UPDATED, stats: MeganeStats): boolean;
+	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
+	emit(event: SharderEvents.ALL_MEMBERS_CACHED, shardId?: number): boolean;
 	/** Emits debug messages */
 	emit(event: SharderEvents.DEBUG, message: string): boolean;
 	/** Emitted when there is an error */

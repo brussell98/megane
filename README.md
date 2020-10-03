@@ -15,6 +15,7 @@ A sharding manager for Discord bots. Megane distributes your shards across (logi
 Features to add before 1.0:
 
 - (IPC) Optional messages in text channels
+- Change cpuUsage recording to return diff since last check
 
 Features to be added after 1.0:
 

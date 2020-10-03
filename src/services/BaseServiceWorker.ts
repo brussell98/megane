@@ -47,6 +47,12 @@ export abstract class BaseServiceWorker {
 	public abstract allClustersReady(): Promise<void> | void;
 
 	/**
+	 * Is called when every guild in all clusters have their members cached.
+	 * @abstract
+	 */
+	public abstract allMembersCached(): Promise<void> | void;
+
+	/**
 	 * Allows returning an object containing additional stats to return during stats collection
 	 * @abstract
 	 */

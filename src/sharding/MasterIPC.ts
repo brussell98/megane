@@ -14,6 +14,7 @@ export interface ClusterCommandRecipient {
 export class MasterIPC {
 	[key: string]: any; // Used to make code like "this['ready']" work
 	private server: Server;
+	private clustersCached = 0;
 
 	constructor(public manager: ShardManager) {
 		process.on('message', message => this.handleMessage(message));
@@ -519,6 +520,20 @@ export class MasterIPC {
 			return message.reply(response);
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });
+		}
+	}
+
+	private async ['_' + IPCEvents.ALL_MEMBERS_CACHED](message: NodeMessage, data: number) {
+		try {
+			this.clustersCached++;
+			this.manager.emit(SharderEvents.ALL_MEMBERS_CACHED, data);
+
+			if (this.clustersCached === this.manager.clusterCount) {
+				this.broadcast({ op: IPCEvents.ALL_MEMBERS_CACHED });
+				this.manager.emit(SharderEvents.ALL_MEMBERS_CACHED);
+			}
+		} catch (error) {
+			this.manager.emit(SharderEvents.ERROR, error);
 		}
 	}
 

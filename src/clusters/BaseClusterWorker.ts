@@ -2,7 +2,7 @@ import { ClusterWorkerIPC } from './ClusterWorkerIPC';
 import { ShardManager } from '../sharding/ShardManager';
 import { Client, ClientOptions, Guild, AnyChannel, User } from 'eris';
 import { IPCEvents } from '../util/constants';
-import { transformError } from '../util/util';
+import { sleep, transformError } from '../util/util';
 import { IPCResult } from '../';
 
 export abstract class BaseClusterWorker {
@@ -28,7 +28,39 @@ export abstract class BaseClusterWorker {
 	public async init() {
 		await this.ipc.init();
 
-		this.client.once('ready', () => this.ipc.send({ op: IPCEvents.READY, d: { id: this.id } }));
+		this.client.once('ready', async () => {
+			this.ipc.send({ op: IPCEvents.READY, d: { id: this.id } });
+
+			if (!this.manager.cacheAllMembers || this.client.guilds.size === 0)
+				return;
+
+			const chunkedGuilds = this.client.guilds.reduce((chunked: Guild[][], guild) => {
+				if (chunked[chunked.length - 1].length > 110) // Gateway limit is 120 per minute. eris reserves 5 for presence, reserve another 5 for other events
+					chunked.push([guild]);
+				else
+					chunked[chunked.length - 1].push(guild);
+
+				return chunked;
+			}, [[]]);
+
+			for (let i = 0; i < chunkedGuilds.length; i++) {
+				chunkedGuilds[i].forEach(guild => {
+					if (guild)
+						guild.fetchAllMembers(20 * 60e3).catch(error => this.ipc.send({
+							op: IPCEvents.ERROR,
+							d: { id: this.id, error: transformError(error) }
+						}));
+				});
+
+				if (i < chunkedGuilds.length - 1)
+					await sleep(60_100); // Wait 60.1 seconds to send the next batch
+			}
+
+			this.ipc.send({ op: IPCEvents.ALL_MEMBERS_CACHED, d: this.id });
+			if (this.allMembersCached)
+				this.allMembersCached(false);
+		});
+
 		this.client.on('connect', shardId => this.ipc.send({ op: IPCEvents.SHARD_CONNECTED, d: { id: this.id, shardId } }));
 		this.client.on('shardReady', shardId => this.ipc.send({ op: IPCEvents.SHARD_READY, d: { id: this.id, shardId } }));
 		this.client.on('shardResume', shardId => this.ipc.send({ op: IPCEvents.SHARD_RESUMED, d: { id: this.id, shardId } }));
@@ -40,6 +72,9 @@ export abstract class BaseClusterWorker {
 			op: IPCEvents.ERROR,
 			d: { id: this.id, shardId, error: transformError(error) }
 		}));
+
+		if (this.manager.cacheAllMembers)
+			this.client.on('guildCreate', guild => guild.fetchAllMembers(2 * 60e3));
 
 		await this.launch();
 	}
@@ -65,6 +100,12 @@ export abstract class BaseClusterWorker {
 	 * @abstract
 	 */
 	public abstract allClustersReady(): Promise<void> | void;
+
+	/**
+	 * Is called when all shards on this cluster have their guild members cached, and when this completes for all clusters.
+	 * @abstract
+	 */
+	public abstract allMembersCached(allClusters: boolean): Promise<void> | void;
 
 	/**
 	 * Allows returning an object containing additional stats to return during stats collection

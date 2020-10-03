@@ -321,4 +321,9 @@ export class ClusterWorkerIPC extends EventEmitter {
 			}
 		} });
 	}
+
+	private async ['_' + IPCEvents.ALL_MEMBERS_CACHED]() {
+		if (this.worker.allMembersCached)
+			this.worker.allMembersCached(true);
+	}
 }
