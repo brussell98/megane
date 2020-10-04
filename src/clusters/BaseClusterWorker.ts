@@ -1,6 +1,6 @@
 import { ClusterWorkerIPC } from './ClusterWorkerIPC';
 import { ShardManager } from '../sharding/ShardManager';
-import { Client, ClientOptions, Guild, AnyChannel, User } from 'eris';
+import { Client, ClientOptions, Guild, AnyChannel, User, Shard } from 'eris';
 import { IPCEvents } from '../util/constants';
 import { sleep, transformError } from '../util/util';
 import { IPCResult } from '../';
@@ -34,27 +34,7 @@ export abstract class BaseClusterWorker {
 			if (!this.manager.cacheAllMembers || this.client.guilds.size === 0)
 				return;
 
-			const chunkedGuilds = this.client.guilds.reduce((chunked: Guild[][], guild) => {
-				if (chunked[chunked.length - 1].length > 110) // Gateway limit is 120 per minute. eris reserves 5 for presence, reserve another 5 for other events
-					chunked.push([guild]);
-				else
-					chunked[chunked.length - 1].push(guild);
-
-				return chunked;
-			}, [[]]);
-
-			for (let i = 0; i < chunkedGuilds.length; i++) {
-				chunkedGuilds[i].forEach(guild => {
-					if (guild)
-						guild.fetchAllMembers(20 * 60e3).catch(error => this.ipc.send({
-							op: IPCEvents.ERROR,
-							d: { id: this.id, error: transformError(error) }
-						}));
-				});
-
-				if (i < chunkedGuilds.length - 1)
-					await sleep(60_100); // Wait 60.1 seconds to send the next batch
-			}
+			await Promise.all(this.client.shards.map(shard => this.cacheShardMembers(shard)));
 
 			this.ipc.send({ op: IPCEvents.ALL_MEMBERS_CACHED, d: this.id });
 			if (this.allMembersCached)
@@ -77,6 +57,35 @@ export abstract class BaseClusterWorker {
 			this.client.on('guildCreate', guild => guild.fetchAllMembers(2 * 60e3));
 
 		await this.launch();
+	}
+
+	private async cacheShardMembers(shard: Shard) {
+		const guilds = this.client.guilds.filter(guild => guild.shard.id === shard.id);
+		if (guilds.length === 0)
+			return;
+
+		const chunkedGuilds = guilds.reduce((chunked: Guild[][], guild) => {
+			if (chunked[chunked.length - 1].length > 110) // Gateway limit is 120 per minute. eris reserves 5 for presence, reserve another 5 for other events
+				chunked.push([guild]);
+			else
+				chunked[chunked.length - 1].push(guild);
+
+			return chunked;
+		}, [[]]);
+
+		for (let i = 0; i < chunkedGuilds.length; i++) {
+			chunkedGuilds[i].forEach(guild => {
+				guild.fetchAllMembers(20 * 60e3).catch(error => this.ipc.send({
+					op: IPCEvents.ERROR,
+					d: { id: this.id, error: transformError(error) }
+				}));
+			});
+
+			if (i < chunkedGuilds.length - 1)
+				await sleep(60_100); // Wait 60.1 seconds to send the next batch
+		}
+
+		return;
 	}
 
 	/**
