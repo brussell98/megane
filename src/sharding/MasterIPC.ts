@@ -430,7 +430,10 @@ export class MasterIPC {
 		if (!data.clusterId && typeof data.query === 'string')
 			data.clusterId = this.getClusterIdForGuild(data.query);
 
-		return this.relayFetch(message, data, IPCEvents.FETCH_GUILD);
+		return this.relayFetch(message, {
+			query: data.query,
+			options: data.includeMembers !== undefined ? { includeMembers: data.includeMembers } : undefined
+		}, IPCEvents.FETCH_GUILD);
 	}
 
 	private async relayFetch(message: NodeMessage, data: any, op: IPCEvents) {
