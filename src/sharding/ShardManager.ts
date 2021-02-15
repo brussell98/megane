@@ -274,7 +274,7 @@ export class ShardManager extends EventEmitter {
 
 		this.debug('Getting bot gateway');
 
-		const res = await fetch('https://discordapp.com/api/v7/gateway/bot', {
+		const res = await fetch('https://discord.com/api/v7/gateway/bot', {
 			method: 'GET',
 			headers: { Authorization: `Bot ${this.token.replace(/^Bot /, '')}` }
 		});
