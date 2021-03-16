@@ -43,6 +43,7 @@ interface SessionObject {
 		total: number;
 		remaining: number;
 		reset_after: number;
+		max_concurrency: number;
 	};
 }
 
@@ -69,6 +70,8 @@ export class ShardManager extends EventEmitter {
 	public guildsPerShard: number;
 	/** Creates a specific number of shards instead of using auto-sharding */
 	public shardCount: number | 'auto';
+	/** The number of shards that can connect at the same time */
+	public maxConcurrency: number;
 	/** The number of clusters to create. By default this is the number of CPUs */
 	public clusterCount: number;
 	/** Eris client constructor options */
@@ -90,6 +93,7 @@ export class ShardManager extends EventEmitter {
 		this.token = options.token!;
 		this.guildsPerShard = options.guildsPerShard || 1500;
 		this.shardCount = options.shardCount || 'auto';
+		this.maxConcurrency = process.env.MAX_CONCURRENCY ? parseInt(process.env.MAX_CONCURRENCY, 10) : 1;
 		this.clusterCount = options.clusterCount || cpus().length;
 		this.clientOptions = options.clientOptions || { };
 		this.timeout = options.timeout || 30e3;
@@ -144,8 +148,12 @@ export class ShardManager extends EventEmitter {
 	public async spawn() {
 		if (isMaster) {
 			if (this.shardCount === 'auto') {
-				const { shards } = await this.getBotGateway();
+				const { shards, session_start_limit: { max_concurrency } } = await this.getBotGateway();
 				this.debug(`Bot gateway recommended ${shards} shards`);
+				if (max_concurrency && max_concurrency !== 1) {
+					this.maxConcurrency = max_concurrency;
+					this.debug(`Maximum concurrency of ${this.maxConcurrency} allowed`);
+				}
 
 				this.shardCount = Math.ceil(shards * (1000 / this.guildsPerShard));
 				this.debug(`Using ${this.shardCount} shards with ${this.guildsPerShard} guilds per shard`);

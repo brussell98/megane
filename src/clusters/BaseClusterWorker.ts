@@ -4,6 +4,7 @@ import { Client, ClientOptions, Guild, AnyChannel, User, Shard } from 'eris';
 import { IPCEvents } from '../util/constants';
 import { sleep, transformError } from '../util/util';
 import { IPCResult } from '../';
+import ErisShardManager from '../sharding/ErisShardManager';
 
 export abstract class BaseClusterWorker {
 	/** The worker's Eris client */
@@ -21,6 +22,8 @@ export abstract class BaseClusterWorker {
 		});
 
 		this.client = new Client(manager.token, clientConfig);
+		this.client.shards = new ErisShardManager(this.client, this.manager.maxConcurrency);
+
 		this.id = Number(process.env.CLUSTER_ID);
 		this.ipc = new ClusterWorkerIPC(this, this.manager.ipcSocket);
 	}
@@ -100,9 +103,10 @@ export abstract class BaseClusterWorker {
 	/**
 	 * Is called after the worker is initialized with an IPC client. This method must be implemented.
 	 * This is where you should usually connect the Eris client.
-	 * @abstract
 	 */
-	protected abstract launch(): Promise<void> | void;
+	protected async launch() {
+		await this.client.connect();
+	}
 
 	/**
 	 * Is called only once, when all clusters have emitted a ready event on startup

@@ -94,7 +94,8 @@ export class Cluster extends EventEmitter {
 			FIRST_SHARD: this.shards.first.toString(),
 			LAST_SHARD: this.shards.last.toString(),
 			TOTAL_SHARDS: this.shards.total.toString(),
-			CLUSTER_ID: this.id.toString()
+			CLUSTER_ID: this.id.toString(),
+			MAX_CONCURRENCY: this.manager.maxConcurrency.toString()
 		});
 
 		this.worker.once('exit', this.exitListenerFunction);
