@@ -16,10 +16,10 @@ export interface SharderOptions {
 	path: string;
 	/** Discord bot token */
 	token: string;
-	/** Number of guilds each shard should have (at initial sharding) (Only used if shardCount is set to 'auto') */
+	/** Number of guilds each shard should have (at initial sharding) (Only used if shardCount is set to auto) */
 	guildsPerShard?: number;
 	/** Number of shards to create */
-	shardCount?: number | 'auto';
+	shardCount?: number | 'auto' | 'auto-lbs';
 	/** Maximum number of clusters to create */
 	clusterCount?: number;
 	/** Options to pass to the Eris client constructor */
@@ -69,7 +69,7 @@ export class ShardManager extends EventEmitter {
 	/** The intended number of guilds that each shard should have. This is only used when shardCount is set to auto. Do not set this to a low number or you may greatly overshoot your shard count and end up with hundreds of empty shards */
 	public guildsPerShard: number;
 	/** Creates a specific number of shards instead of using auto-sharding */
-	public shardCount: number | 'auto';
+	public shardCount: number | 'auto' | 'auto-lbs';
 	/** The number of shards that can connect at the same time */
 	public maxConcurrency: number;
 	/** The number of clusters to create. By default this is the number of CPUs */
@@ -147,16 +147,25 @@ export class ShardManager extends EventEmitter {
 	 */
 	public async spawn() {
 		if (isMaster) {
-			if (this.shardCount === 'auto') {
+			if (this.shardCount === 'auto' || this.shardCount === 'auto-lbs') {
+				const largeBotSharding = this.shardCount === 'auto-lbs';
+
 				const { shards, session_start_limit: { max_concurrency } } = await this.getBotGateway();
 				this.debug(`Bot gateway recommended ${shards} shards`);
+
 				if (max_concurrency && max_concurrency !== 1) {
 					this.maxConcurrency = max_concurrency;
 					this.debug(`Maximum concurrency of ${this.maxConcurrency} allowed`);
 				}
 
 				this.shardCount = Math.ceil(shards * (1000 / this.guildsPerShard));
-				this.debug(`Using ${this.shardCount} shards with ${this.guildsPerShard} guilds per shard`);
+				if (largeBotSharding) { // Make shard count a multiple of 16
+					this.shardCount = this.shardCount / 16;
+					if (!Number.isInteger(this.shardCount))
+						this.shardCount = Math.floor(this.shardCount) + 1;
+					this.shardCount *= 16;
+				}
+				this.debug(`Using ${this.shardCount} shards with a target of ${this.guildsPerShard} guilds per shard`);
 			}
 
 			if (this.shardCount < this.clusterCount)
@@ -282,7 +291,7 @@ export class ShardManager extends EventEmitter {
 
 		this.debug('Getting bot gateway');
 
-		const res = await fetch('https://discord.com/api/v7/gateway/bot', {
+		const res = await fetch('https://discord.com/api/v8/gateway/bot', {
 			method: 'GET',
 			headers: { Authorization: `Bot ${this.token.replace(/^Bot /, '')}` }
 		});

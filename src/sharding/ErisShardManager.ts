@@ -120,7 +120,7 @@ export default class ErisShardManager extends Collection<Shard> {
 			}, 1e3);
 	}
 
-	public readyPacketCB() {
+	public _readyPacketCB() {
 		// NOTE: This will fail to enforce the rate-limit if shards start connecting late in the same pool, and more queue up after
 		this.lastConnect = Date.now();
 		this.tryConnect();

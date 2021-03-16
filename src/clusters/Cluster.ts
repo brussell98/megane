@@ -44,7 +44,7 @@ export class Cluster extends EventEmitter {
 	 * @param {Number} [timeout=-1] Time in ms to wait for the worker to shut down before forcefully exiting.
 	 */
 	public kill(timeout = -1) {
-		return new Promise(resolve => {
+		return new Promise<void>(resolve => {
 			this.ready = false;
 
 			if (this.worker) {
@@ -107,7 +107,7 @@ export class Cluster extends EventEmitter {
 	}
 
 	private waitForReady() {
-		return new Promise((resolve, reject) => {
+		return new Promise<void>((resolve, reject) => {
 			this.once('ready', () => {
 				this.ready = true;
 				return resolve();
