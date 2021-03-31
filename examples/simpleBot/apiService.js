@@ -53,8 +53,12 @@ module.exports = class JsonAPI extends BaseServiceWorker {
 		console.log('[Service] Ready to shut down');
 	}
 
-	allClustersReady() {
+	async allClustersReady() {
 		console.log('[JsonAPI] All clusters ready');
+	}
+
+	allMembersCached() {
+		console.log('[JsonAPI] All members cached');
 	}
 
 	async getInitialData() {

@@ -59,7 +59,7 @@ export class Cluster extends EventEmitter {
 				};
 				this.worker.once('exit', exitListener);
 
-				// Send command to shut down
+				// Send command to shut down TODO: Will error if IPC never connected
 				this.send({ op: IPCEvents.SHUTDOWN });
 
 				if (timeout > 0)
