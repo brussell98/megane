@@ -56,8 +56,8 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return d as unknown;
 	}
 
-	public async fetchUser(query: string, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId } }) as IPCResult;
+	public async fetchUser(query: string, clusterId?: number | null, idOnly?: boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId, idOnly } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -65,8 +65,8 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<User>;
 	}
 
-	public async fetchUsers(queries: string[], clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId } }) as IPCResult;
+	public async fetchUsers(queries: string[], clusterId?: number | null, idOnly?: boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId, idOnly } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -74,7 +74,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<User[]>;
 	}
 
-	public async fetchChannel(id: string, clusterId?: number) {
+	public async fetchChannel(id: string, clusterId?: number | null) {
 		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: id, clusterId } }) as IPCResult;
 
 		if (!result.success)
@@ -83,7 +83,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Channel>;
 	}
 
-	public async fetchChannels(ids: string[], clusterId?: number) {
+	public async fetchChannels(ids: string[], clusterId?: number | null) {
 		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: ids, clusterId } }) as IPCResult;
 
 		if (!result.success)
@@ -92,8 +92,8 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Channel[]>;
 	}
 
-	public async fetchGuild(id: string, includeMembers?: string[] | boolean, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, includeMembers, clusterId } }) as IPCResult;
+	public async fetchGuild(id: string, clusterId?: number | null, includeMembers?: string[] | boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, clusterId, includeMembers } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -101,8 +101,8 @@ export class ServiceWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Guild>;
 	}
 
-	public async fetchGuilds(ids: string[], includeMembers?: string[] | boolean, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, includeMembers, clusterId } }) as IPCResult;
+	public async fetchGuilds(ids: string[], clusterId?: number | null, includeMembers?: string[] | boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, clusterId, includeMembers } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);

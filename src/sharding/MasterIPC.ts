@@ -189,35 +189,35 @@ export class MasterIPC {
 		return d as unknown;
 	}
 
-	public async fetchUser(query: string, clusterId?: number) {
+	public async fetchUser(query: string, clusterId?: number | null, idOnly?: boolean) {
 		if (!query || typeof query !== 'string')
 			throw new Error('User query is required, and must be a string');
 
-		return this.fetch(query, clusterId, IPCEvents.FETCH_USER) as Promise<User | IPCFetchResults<User>>;
+		return this.fetch(query, clusterId, IPCEvents.FETCH_USER, { idOnly }) as Promise<User | IPCFetchResults<User>>;
 	}
 
-	public async fetchUsers(queries: string[], clusterId?: number) {
+	public async fetchUsers(queries: string[], clusterId?: number | null, idOnly?: boolean) {
 		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string'))
 			throw new Error('User queries are required, and they must be strings');
 
-		return this.fetch(queries, clusterId, IPCEvents.FETCH_USER) as Promise<User[] | IPCFetchResults<User[]>>;
+		return this.fetch(queries, clusterId, IPCEvents.FETCH_USER, { idOnly }) as Promise<User[] | IPCFetchResults<User[]>>;
 	}
 
-	public async fetchChannel(query: string, clusterId?: number) {
+	public async fetchChannel(query: string, clusterId?: number | null) {
 		if (!query || typeof query !== 'string' || !/^[0-9]+$/.test(query))
 			throw new Error('Channel query is required, and must be an id as a string');
 
 		return this.fetch(query, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel | IPCFetchResults<Channel>>;
 	}
 
-	public async fetchChannels(queries: string[], clusterId?: number) {
+	public async fetchChannels(queries: string[], clusterId?: number | null) {
 		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
 			throw new Error('Channel queries are required, and they must be ids as strings');
 
 		return this.fetch(queries, clusterId, IPCEvents.FETCH_CHANNEL) as Promise<Channel[] | IPCFetchResults<Channel[]>>;
 	}
 
-	public async fetchGuild(query: string, includeMembers?: string[] | boolean, clusterId?: number) {
+	public async fetchGuild(query: string, clusterId?: number | null, includeMembers?: string[] | boolean) {
 		if (!query || typeof query !== 'string' || !/^[0-9]+$/.test(query))
 			throw new Error('Guild query is required, and must be an id as a string');
 
@@ -230,7 +230,7 @@ export class MasterIPC {
 		return this.fetch(query, clusterId, IPCEvents.FETCH_GUILD, { includeMembers }) as Promise<Guild | IPCFetchResults<Guild>>;
 	}
 
-	public async fetchGuilds(queries: string[], includeMembers?: string[] | boolean, clusterId?: number) {
+	public async fetchGuilds(queries: string[], clusterId?: number | null, includeMembers?: string[] | boolean) {
 		if (!Array.isArray(queries) || queries.some((e: any) => typeof e !== 'string' || !/^[0-9]+$/.test(e)))
 			throw new Error('Guild queries are required, and they must be ids as strings');
 
@@ -240,7 +240,7 @@ export class MasterIPC {
 		return this.fetch(queries, clusterId, IPCEvents.FETCH_GUILD, { includeMembers }) as Promise<Guild[] | IPCFetchResults<Guild[]>>;
 	}
 
-	private async fetch(query: string | string[], clusterId: number | undefined, op: IPCEvents, options?: any) {
+	private async fetch(query: string | string[], clusterId: number | null | undefined, op: IPCEvents, options?: any) {
 		if (typeof clusterId === 'number') {
 			const { success, d } = await this.server.sendTo(MasterIPC.clusterRecipient(clusterId), { op, d: { query, options } }) as IPCResult;
 			if (!success)
@@ -404,7 +404,10 @@ export class MasterIPC {
 		)
 			return message.reply({ success: false, d: { name: 'Error', message: 'User query is required, and must be a string or array of strings' } });
 
-		return this.relayFetch(message, data, IPCEvents.FETCH_USER);
+		return this.relayFetch(message, {
+			query: data.query,
+			options: { idOnly: data.idOnly }
+		}, IPCEvents.FETCH_USER);
 	}
 
 	private ['_' + IPCEvents.FETCH_CHANNEL](message: NodeMessage, data: any) {

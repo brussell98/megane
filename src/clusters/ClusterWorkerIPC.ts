@@ -121,8 +121,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return d as unknown;
 	}
 
-	public async fetchUser(query: string, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId } }) as IPCResult;
+	public async fetchUser(query: string, clusterId?: number | null, idOnly?: boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query, clusterId, idOnly } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -130,8 +130,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<User>;
 	}
 
-	public async fetchUsers(queries: string[], clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId } }) as IPCResult;
+	public async fetchUsers(queries: string[], clusterId?: number | null, idOnly?: boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_USER, d: { query: queries, clusterId, idOnly } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -139,7 +139,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<User[]>;
 	}
 
-	public async fetchChannel(id: string, clusterId?: number) {
+	public async fetchChannel(id: string, clusterId?: number | null) {
 		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: id, clusterId } }) as IPCResult;
 
 		if (!result.success)
@@ -148,7 +148,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Channel>;
 	}
 
-	public async fetchChannels(ids: string[], clusterId?: number) {
+	public async fetchChannels(ids: string[], clusterId?: number | null) {
 		const result = await this.server.send({ op: IPCEvents.FETCH_CHANNEL, d: { query: ids, clusterId } }) as IPCResult;
 
 		if (!result.success)
@@ -157,8 +157,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Channel[]>;
 	}
 
-	public async fetchGuild(id: string, includeMembers?: string[] | boolean, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, includeMembers, clusterId } }) as IPCResult;
+	public async fetchGuild(id: string, clusterId?: number | null, includeMembers?: string[] | boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: id, clusterId, includeMembers } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -166,8 +166,8 @@ export class ClusterWorkerIPC extends EventEmitter {
 		return result.d as IPCFetchResults<Guild>;
 	}
 
-	public async fetchGuilds(ids: string[], includeMembers?: string[] | boolean, clusterId?: number) {
-		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, includeMembers, clusterId } }) as IPCResult;
+	public async fetchGuilds(ids: string[], clusterId?: number | null, includeMembers?: string[] | boolean) {
+		const result = await this.server.send({ op: IPCEvents.FETCH_GUILD, d: { query: ids, clusterId, includeMembers } }) as IPCResult;
 
 		if (!result.success)
 			throw makeError(result.d as IPCError);
@@ -227,12 +227,14 @@ export class ClusterWorkerIPC extends EventEmitter {
 
 	private ['_' + IPCEvents.FETCH_USER](message: NodeMessage, data: any) {
 		try {
+			const idOnly = !!data.options.idOnly;
+
 			if (Array.isArray(data.query)) {
-				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getUser(q) || null)).filter((e: any) => !!e);
+				const result = data.query.map((q: string) => this.sanitizeErisObject(this.worker.getUser(q, idOnly) || null)).filter((e: any) => !!e);
 				return message.reply({ success: true, d: { result } });
 			}
 
-			const result = this.sanitizeErisObject(this.worker.getUser(data.query) || null);
+			const result = this.sanitizeErisObject(this.worker.getUser(data.query, idOnly) || null);
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
 			return message.reply({ success: false, d: transformError(error) });

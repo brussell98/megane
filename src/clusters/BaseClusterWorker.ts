@@ -140,8 +140,11 @@ export abstract class BaseClusterWorker {
 		return await eval(script);
 	}
 
-	public getUser(query: string): User | null {
+	public getUser(query: string, idOnly: boolean): User | null {
 		query = query.toLowerCase().trim();
+
+		if (idOnly)
+			return this.client.users.get(query) || null;
 
 		if (/^[0-9]{16,19}$/.test(query)) { // If query looks like an id try to get by id
 			const user = this.client.users.get(query);
@@ -149,6 +152,8 @@ export abstract class BaseClusterWorker {
 				return user;
 		}
 
+		// NOTE: This is not very efficient. It is optimized for full matches, not partial matches or misses.
+		// I recommend customizing this for your needs
 		return this.client.users.find(user => user.username.toLowerCase() === query)
 			|| this.client.users.find(user => user.username.toLowerCase().includes(query))
 			|| null;
