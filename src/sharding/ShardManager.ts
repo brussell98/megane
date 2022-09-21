@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { cpus } from 'os';
-import { isMaster, setupMaster } from 'cluster';
+import cluster from 'cluster'; // @types/node seems to be incorrect, must import default
 import { Cluster } from '../clusters/Cluster';
 import { BaseClusterWorker } from '../clusters/BaseClusterWorker';
 import { Service, ServiceOptions } from '../services/Service';
@@ -56,7 +56,7 @@ interface ClusterShardInfo {
 	total: number;
 }
 
-export class ShardManager extends EventEmitter {
+export class ShardManager extends EventEmitter implements ShardManagerEventEmitter {
 	/** A map of clusters by their id */
 	public clusters?: Map<number, Cluster>;
 	/** A map of services by their name */
@@ -95,14 +95,14 @@ export class ShardManager extends EventEmitter {
 		this.shardCount = options.shardCount || 'auto';
 		this.maxConcurrency = process.env.MAX_CONCURRENCY ? parseInt(process.env.MAX_CONCURRENCY, 10) : 1;
 		this.clusterCount = options.clusterCount || cpus().length;
-		this.clientOptions = options.clientOptions || { };
+		this.clientOptions = options.clientOptions || { intents: 0 };
 		this.timeout = options.timeout || 30e3;
 		this.nodeArgs = options.nodeArgs;
 		this.ipcSocket = options.ipcSocket || 8191;
 		this.statsInterval = options.statsInterval || 60e3;
 		this.cacheAllMembers = !!options.cacheAllMembers;
 
-		if (isMaster) {
+		if (cluster.isMaster) {
 			this.clusters = new Map<number, Cluster>();
 			this.services = new Map<string, Service>();
 			this.ipc = new MasterIPC(this);
@@ -146,7 +146,7 @@ export class ShardManager extends EventEmitter {
 	 * On workers: Loads the provided file implementing a worker and calls init()
 	 */
 	public async spawn() {
-		if (isMaster) {
+		if (cluster.isMaster) {
 			if (this.shardCount === 'auto' || this.shardCount === 'auto-lbs') {
 				const largeBotSharding = this.shardCount === 'auto-lbs';
 
@@ -160,7 +160,7 @@ export class ShardManager extends EventEmitter {
 
 				this.shardCount = Math.ceil(shards * (1000 / this.guildsPerShard));
 				if (largeBotSharding) { // Make shard count a multiple of 16
-					this.shardCount = this.shardCount / 16;
+					this.shardCount /= 16;
 					if (!Number.isInteger(this.shardCount))
 						this.shardCount = Math.floor(this.shardCount) + 1;
 					this.shardCount *= 16;
@@ -175,7 +175,7 @@ export class ShardManager extends EventEmitter {
 			const shardInfo = this.clusterShards();
 
 			if (this.nodeArgs)
-				setupMaster({ execArgv: this.nodeArgs });
+				cluster.setupMaster({ execArgv: this.nodeArgs });
 
 			const failed: Cluster[] = [];
 
@@ -217,7 +217,7 @@ export class ShardManager extends EventEmitter {
 
 	/** Restarts all clusters */
 	public async restartAll() {
-		if (!isMaster)
+		if (!cluster.isMaster)
 			throw new Error('This can only be called on the master process');
 
 		this.debug('Restarting all clusters');
@@ -228,20 +228,20 @@ export class ShardManager extends EventEmitter {
 
 	/** Restarts a specific cluster */
 	public async restart(clusterId: number) {
-		if (!isMaster)
+		if (!cluster.isMaster)
 			throw new Error('This can only be called on the master process');
 
-		const cluster = this.clusters!.get(clusterId);
-		if (!cluster)
+		const returnedCluster = this.clusters!.get(clusterId);
+		if (!returnedCluster)
 			throw new Error('No cluster with that id found');
 
 		this.debug(`Restarting cluster ${clusterId}`);
 
-		await cluster.respawn();
+		await returnedCluster.respawn();
 	}
 
 	private async retryFailed(clusters: Cluster[]): Promise<void> {
-		if (!isMaster)
+		if (!cluster.isMaster)
 			throw new Error('This can only be called on the master process');
 
 		this.debug(`Restarting ${clusters.length} failed clusters`);
@@ -262,7 +262,7 @@ export class ShardManager extends EventEmitter {
 
 	/** Register and spawn a service */
 	public async registerService(path: string, options: ServiceOptions) {
-		if (!isMaster)
+		if (!cluster.isMaster)
 			throw new Error('This can only be called on the master process');
 
 		if (!path || !options || !options.name || this.services!.has(options.name))
@@ -325,7 +325,7 @@ export class ShardManager extends EventEmitter {
 	}
 }
 
-export interface ShardManager { // eslint-disable-line no-redeclare
+export interface ShardManagerEventEmitter {
 	/** Emitted when a service spawns */
 	on(event: SharderEvents.SERVICE_SPAWN, listener: (service: Service) => void): this;
 	/** Emitted when a service becomes ready */
@@ -343,7 +343,7 @@ export interface ShardManager { // eslint-disable-line no-redeclare
 	/** Emitted when a shard resumes */
 	on(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
-	on(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	on(event: SharderEvents.SHARD_DISCONNECTED, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	on(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
@@ -371,7 +371,7 @@ export interface ShardManager { // eslint-disable-line no-redeclare
 	/** Emitted when a shard resumes */
 	once(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
-	once(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	once(event: SharderEvents.SHARD_DISCONNECTED, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	once(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
@@ -399,7 +399,7 @@ export interface ShardManager { // eslint-disable-line no-redeclare
 	/** Emitted when a shard resumes */
 	off(event: SharderEvents.SHARD_RESUMED, listener: (clusterId: number, shardId: number) => void): this;
 	/** Emitted when a shard disconnects */
-	off(event: SharderEvents.SHARD_DISCONNECT, listener: (clusterId: number, shardId: number, error: Error) => void): this;
+	off(event: SharderEvents.SHARD_DISCONNECTED, listener: (clusterId: number, shardId: number, error: Error) => void): this;
 	/** Emitted when the manager updates the statistics object */
 	off(event: SharderEvents.STATS_UPDATED, listener: (stats: MeganeStats) => void): this;
 	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */
@@ -427,7 +427,7 @@ export interface ShardManager { // eslint-disable-line no-redeclare
 	/** Emitted when a shard resumes */
 	emit(event: SharderEvents.SHARD_RESUMED, clusterId: number, shardId: number): boolean;
 	/** Emitted when a shard disconnects */
-	emit(event: SharderEvents.SHARD_DISCONNECT, clusterId: number, shardId: number, error: Error): boolean;
+	emit(event: SharderEvents.SHARD_DISCONNECTED, clusterId: number, shardId: number, error: Error): boolean;
 	/** Emitted when the manager updates the statistics object */
 	emit(event: SharderEvents.STATS_UPDATED, stats: MeganeStats): boolean;
 	/** Emitted when a cluster has finished caching all of it's members, or when all clusters have completed it */

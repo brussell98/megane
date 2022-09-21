@@ -1,5 +1,16 @@
 # Changelog
 
+## Upcoming
+
+Eris is no-longer a maintained library. Meanwhile discord.js has high adoption, active maintainers, and better usability.
+Megane will be migrating to it in the future.
+
+## 0.13.0
+
+* **[Breaking]** Changed the `shardDisconnect` event to `shardDisconnected` for consistency. It should have been this originally but it was missed.
+* TypeScript updates
+* Updated eris `toJSON` overrides
+
 ## 0.12.0
 
 * **[Breaking]** IPC fetch changes

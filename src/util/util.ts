@@ -30,7 +30,7 @@ export function getIdFromSocketName(name: string | null): string | number | null
 		return null;
 
 	if (name.startsWith('megane:service:'))
-		return name.substr(15);
+		return name.substring(15);
 
 	const nameRegex = /\d+$/.exec(name);
 	if (!nameRegex)

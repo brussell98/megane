@@ -11,26 +11,31 @@ Channel.prototype.toJSON = function(props: string[] = []) {
 
 Message.prototype.toJSON = function(props: string[] = []) {
 	return Base.prototype.toJSON.call(this, [
+		'activity',
+		'application',
 		'attachments',
 		'author',
 		'content',
 		'editedTimestamp',
 		'embeds',
+		'flags',
+		'guildID',
 		'hit',
+		'member',
 		'mentionEveryone',
 		'mentions',
+		'messageReference',
 		'pinned',
 		'reactions',
+		'referencedMessage',
 		'roleMentions',
+		'stickers',
+		'stickerItems',
 		'timestamp',
 		'tts',
 		'type',
-
 		'webhookID',
-		'messageReference',
-		'flags',
-		'activity',
-		'application',
+
 		'cleanContent',
 		'channelMentions',
 		...props
@@ -39,20 +44,20 @@ Message.prototype.toJSON = function(props: string[] = []) {
 
 Member.prototype.toJSON = function(props: string[] = []) {
 	return Base.prototype.toJSON.call(this, [
-		'game',
+		'activities',
+		'communicationDisabledUntil',
 		'joinedAt',
 		'nick',
+		'pending',
+		'premiumSince',
 		'roles',
 		'status',
 		'user',
 		'voiceState',
-		'premiumSince',
 
 		'createdAt',
 		'clientStatus',
-		'activities',
-		'voiceState',
-		'permission',
+		'permissions',
 		'avatarURL',
 		...props
 	]);
@@ -60,13 +65,16 @@ Member.prototype.toJSON = function(props: string[] = []) {
 
 User.prototype.toJSON = function(props: string[] = []) {
 	return Base.prototype.toJSON.call(this, [
+		'accentColor',
 		'avatar',
+		'banner',
 		'bot',
 		'discriminator',
+		'publicFlags',
+		'system',
 		'username',
 
 		'createdAt',
-		'publicFlags',
 		'defaultAvatarURL',
 		'staticAvatarURL',
 		'avatarURL',

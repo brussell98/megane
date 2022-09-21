@@ -1,4 +1,4 @@
-import { Worker, fork } from 'cluster';
+import cluster, { Worker } from 'cluster';
 import { ShardManager } from '../sharding/ShardManager';
 import { EventEmitter } from 'events';
 import { SharderEvents, IPCEvents } from '../util/constants';
@@ -89,7 +89,7 @@ export class Cluster extends EventEmitter {
 		if (this.worker && !this.worker.isDead())
 			throw new Error('This cluster already has a spawned worker');
 
-		this.worker = fork({
+		this.worker = cluster.fork({
 			NODE_ENV: process.env.NODE_ENV,
 			FIRST_SHARD: this.shards.first.toString(),
 			LAST_SHARD: this.shards.last.toString(),

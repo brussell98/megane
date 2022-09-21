@@ -49,11 +49,11 @@ export abstract class BaseClusterWorker {
 		this.client.on('shardResume', shardId => this.ipc.send({ op: IPCEvents.SHARD_RESUMED, d: { id: this.id, shardId } }));
 		this.client.on('shardDisconnect', (error, id) => this.ipc.send({
 			op: IPCEvents.SHARD_DISCONNECTED,
-			d: { id: this.id, shardId: id, error: transformError(error) }
+			d: { id: this.id, shardId: id, error: transformError(error as Error) }
 		}));
 		this.client.on('error', (error, shardId) => this.ipc.send({
 			op: IPCEvents.ERROR,
-			d: { id: this.id, shardId, error: transformError(error) }
+			d: { id: this.id, shardId, error: transformError(error as Error) }
 		}));
 
 		if (this.manager.cacheAllMembers)

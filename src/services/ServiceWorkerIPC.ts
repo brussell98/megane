@@ -162,7 +162,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 			const result = await this.worker.eval(data);
 			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -183,7 +183,7 @@ export class ServiceWorkerIPC extends EventEmitter {
 			const result = await this.worker.handleCommand(data, true);
 			return message.reply(result);
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 

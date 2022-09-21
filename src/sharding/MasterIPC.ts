@@ -17,7 +17,6 @@ export class MasterIPC {
 	private clustersCached = 0;
 
 	constructor(public manager: ShardManager) {
-		process.on('message', message => this.handleMessage(message));
 		this.server = new Server('megane:master')
 			.on('connect', client => this.debug('Client connected: ' + client.name))
 			.on('disconnect', client => this.debug('Client disconnected: ' + client.name))
@@ -301,7 +300,7 @@ export class MasterIPC {
 	}
 
 	private ['_' + IPCEvents.SHARD_DISCONNECTED](message: NodeMessage, data: any) {
-		this.manager.emit(SharderEvents.SHARD_DISCONNECT, data.id, data.shardId, makeError(data.error));
+		this.manager.emit(SharderEvents.SHARD_DISCONNECTED, data.id, data.shardId, makeError(data.error));
 	}
 
 	private ['_' + IPCEvents.ERROR](message: NodeMessage, data: any) {
@@ -337,7 +336,7 @@ export class MasterIPC {
 
 			return message.reply({ success: true, d: { workerId: service.worker?.id } });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -346,7 +345,7 @@ export class MasterIPC {
 			const result = await this.manager.eval(data);
 			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -374,7 +373,7 @@ export class MasterIPC {
 				errors: responses.filter(res => !res.success).map(res => transformError(res.d as IPCError))
 			} });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -464,7 +463,7 @@ export class MasterIPC {
 
 			return message.reply({ success: true, d: { result, errors } });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -483,7 +482,7 @@ export class MasterIPC {
 
 			return message.reply(response);
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -525,7 +524,7 @@ export class MasterIPC {
 
 			return message.reply(response);
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 

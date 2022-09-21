@@ -2,6 +2,7 @@ import type { Client } from 'eris';
 import { Base, Collection, Shard } from 'eris';
 
 export default class ErisShardManager extends Collection<Shard> {
+	public buckets: Map<number, number> = new Map(); // Required because of types
 	public connectQueue: Shard[];
 	public connecting: number;
 	public lastConnect: number;

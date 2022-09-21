@@ -189,7 +189,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 			const result = await this.worker.eval(data);
 			return message.reply({ success: true, d: result });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -237,7 +237,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 			const result = this.sanitizeErisObject(this.worker.getUser(data.query, idOnly) || null);
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -251,7 +251,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 			const result = this.sanitizeErisObject(this.worker.getChannel(data.query) || null);
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -281,7 +281,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 
 			return message.reply({ success: true, d: { result } });
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
@@ -293,7 +293,7 @@ export class ClusterWorkerIPC extends EventEmitter {
 			const result = await this.worker.handleCommand(data, true);
 			return message.reply(result);
 		} catch (error) {
-			return message.reply({ success: false, d: transformError(error) });
+			return message.reply({ success: false, d: transformError(error as Error) });
 		}
 	}
 
